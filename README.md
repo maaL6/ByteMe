@@ -6,9 +6,9 @@ Starter thuần kỹ thuật, không có business API, entity, migration nghiệ
 
 - Java 25, Maven 3.9.11 qua Maven Wrapper.
 - Spring Boot 3.5.16: Web, Validation, Data JPA, Security, Actuator.
-- PostgreSQL 17, Flyway, Springdoc OpenAPI/Swagger UI 2.8.17.
+- MySQL 8.4, Flyway, Springdoc OpenAPI/Swagger UI 2.8.17.
 - JJWT 0.13.0 (chỉ dependency), Lombok.
-- Spring Boot Test, JUnit 5, Mockito, Testcontainers PostgreSQL.
+- Spring Boot Test, JUnit 5, Mockito, Testcontainers MySQL.
 
 Boot 3.5 được chọn để dùng JUnit 5 theo BOM và hỗ trợ Java 25:
 [Spring Boot requirements](https://docs.spring.io/spring-boot/3.5/system-requirements.html).
@@ -32,7 +32,7 @@ docker compose up --build
 ```
 
 PowerShell dùng Copy-Item .env.example .env. Compose cũng chạy được khi chưa có .env;
-các mặc định chỉ phục vụ development. PostgreSQL có persistent volume và healthcheck;
+Các mặc định chỉ phục vụ development. MySQL có persistent volume và healthcheck;
 backend đợi database healthy. Port chỉ bind localhost.
 Docker build bỏ qua thực thi test vì Testcontainers cần Docker host; chạy verify riêng.
 
@@ -42,7 +42,7 @@ thay credentials của database đã khởi tạo trong volume hiện có.
 ## Chạy Java local
 
 ```sh
-docker compose up -d postgres
+docker compose up -d mysql
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
@@ -57,7 +57,7 @@ Ví dụ PowerShell: `$env:DB_USERNAME = "starter"`; POSIX: `export DB_USERNAME=
 ./mvnw clean verify
 ```
 
-Test contextLoads khởi động PostgreSQL 17 qua Testcontainers; Docker phải đang chạy.
+Test contextLoads khởi động MySQL 8.4 qua Testcontainers; Docker phải đang chạy.
 Test tự cấp connection properties, không dùng database development, không bỏ qua khi thiếu Docker.
 JAR: target/application.jar.
 
@@ -89,11 +89,12 @@ Không có login, tài khoản mặc định hoặc JWT implementation. Actuator
 
 | Biến | Ý nghĩa | Mặc định development |
 | --- | --- | --- |
-| DB_URL | JDBC URL JVM; Compose đặt hostname postgres | jdbc:postgresql://localhost:5432/starter |
-| DB_NAME | Database khi Compose khởi tạo PostgreSQL | starter |
+| DB_URL | JDBC URL JVM; Compose đặt hostname mysql | jdbc:mysql://localhost:3306/starter |
+| DB_NAME | Database khi Compose khởi tạo MySQL | starter |
 | DB_USERNAME | Database username | starter |
 | DB_PASSWORD | Database password | local-development-only |
-| DB_PORT | PostgreSQL port host | 5432 |
+| DB_ROOT_PASSWORD | MySQL root password, dùng cho healthcheck | local-development-root-only |
+| DB_PORT | MySQL port host | 3306 |
 | SERVER_PORT | Port JVM local hoặc port backend host Compose | 8080 |
 | SPRING_PROFILES_ACTIVE | Profile Spring | Compose: dev; JVM: không mặc định |
 

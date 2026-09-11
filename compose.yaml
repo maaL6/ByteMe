@@ -1,16 +1,17 @@
 services:
-  postgres:
-    image: postgres:17-alpine
+  mysql:
+    image: mysql:8.4
     environment:
-      POSTGRES_DB: ${DB_NAME:-starter}
-      POSTGRES_USER: ${DB_USERNAME:-starter}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-local-development-only}
+      MYSQL_DATABASE: ${DB_NAME:-starter}
+      MYSQL_USER: ${DB_USERNAME:-starter}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-local-development-only}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-local-development-root-only}
     ports:
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent" ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -20,14 +21,14 @@ services:
       context: .
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-starter}
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-starter}
       DB_USERNAME: ${DB_USERNAME:-starter}
       DB_PASSWORD: ${DB_PASSWORD:-local-development-only}
       SERVER_PORT: 8080
     ports:
       - "127.0.0.1:${SERVER_PORT:-8080}:8080"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
 volumes:
-  postgres_data:
+  mysql_data:
