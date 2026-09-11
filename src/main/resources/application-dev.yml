@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:${DB_PORT:5432}/${DB_NAME:starter}}
+    username: ${DB_USERNAME:starter}
+    password: ${DB_PASSWORD:local-development-only}

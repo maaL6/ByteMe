@@ -1,0 +1,4 @@
+# Connection values are supplied by Testcontainers via DynamicPropertySource.
+spring:
+  jpa:
+    show-sql: false
