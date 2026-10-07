@@ -1,132 +1,79 @@
-# Java Spring Boot Starter Template
+# ByteMe
 
-Starter thuần kỹ thuật, không có business API, entity, migration nghiệp vụ hoặc dữ liệu mẫu.
+Backend cho một nhà hàng, hỗ trợ đặt món tại chỗ (`DINE_IN`) và giao hàng
+(`DELIVERY`). Hiện có schema MySQL và dữ liệu mẫu cho UC01–UC18; API nghiệp vụ,
+đăng nhập và JWT chưa được triển khai.
 
-## Tech stack
+- [Use case](docs/Project%20KTPM.md)
+- [Database và ERD](docs/database-design.md)
+- [Truy vấn mẫu](docs/database-queries.sql)
+- [Kiến trúc và sequence](docs/architecture-single-restaurant.md)
+- [Đề KTPM 2026](https://github.com/maytinhdibo/KTPM-architecture-solution/blob/main/2026.md)
 
-- Java 25, Maven 3.9.11 qua Maven Wrapper.
-- Spring Boot 3.5.16: Web, Validation, Data JPA, Security, Actuator.
-- MySQL 8.4, Flyway, Springdoc OpenAPI/Swagger UI 2.8.17.
-- JJWT 0.13.0 (chỉ dependency), Lombok.
-- Spring Boot Test, JUnit 5, Mockito, Testcontainers MySQL.
+## Công nghệ
 
-Boot 3.5 được chọn để dùng JUnit 5 theo BOM và hỗ trợ Java 25:
-[Spring Boot requirements](https://docs.spring.io/spring-boot/3.5/system-requirements.html).
-[Springdoc compatibility](https://springdoc.org/v2/) xác nhận Springdoc 2.8.x phù hợp Boot 3.5.
+Java 25, Spring Boot 3.5.16, MySQL 8.4, Spring Data JPA, Spring Security,
+Springdoc OpenAPI, JUnit 5 và Testcontainers. Maven 3.9.11 qua Maven Wrapper.
 
-## Prerequisites
+## Chạy dự án
 
-JDK 25, JAVA_HOME trỏ tới JDK, Java trong PATH; Docker Engine hoặc Docker Desktop
-đang chạy Linux containers và Docker Compose v2. Lần đầu cần Internet để tải dependencies/images.
-Không cần cài Maven riêng.
+Cần JDK 25 và Docker đang chạy Linux containers. Trong PowerShell:
 
-Các lệnh dùng POSIX shell. Trên Windows PowerShell thay ./mvnw bằng .\mvnw.cmd.
-Nếu bản sao thư mục không giữ executable bit, chạy chmod +x mvnw trên Linux/macOS.
-
-## Chạy Docker Compose
-
-```sh
-cp .env.example .env
-docker compose config --quiet
-docker compose up --build
+```powershell
+Copy-Item .env.example .env # chỉ khi chưa có .env
+docker compose up --build -d
 ```
 
-PowerShell dùng Copy-Item .env.example .env. Compose cũng chạy được khi chưa có .env;
-Các mặc định chỉ phục vụ development. MySQL có persistent volume và healthcheck;
-backend đợi database healthy. Port chỉ bind localhost.
-Docker build bỏ qua thực thi test vì Testcontainers cần Docker host; chạy verify riêng.
+Compose dùng cấu hình trong `.env`; các giá trị mẫu chỉ dành cho development.
+MySQL lưu dữ liệu trong volume, backend chờ database sẵn sàng. `docker compose down`
+giữ dữ liệu; thay mật khẩu trong `.env` không đổi mật khẩu của database đã tạo.
 
-Dừng bằng docker compose down; volume được giữ lại. Sửa credentials trong .env không
-thay credentials của database đã khởi tạo trong volume hiện có.
+MySQL tự chạy `db/schema.sql` khi tạo volume mới. Nạp mẫu một lần trên database
+rỗng bằng lệnh sau; backend không tự nạp seed khi khởi động:
 
-## Chạy Java local
+```powershell
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u "$MYSQL_USER" "$MYSQL_DATABASE" < /opt/byteme/seed.sql'
+```
 
-```sh
+Mật khẩu tài khoản mẫu: `ByteMeDemo!2026`, lưu BCrypt; email nằm trong `db/seed.sql`.
+
+Chạy Java local với MySQL trong Docker:
+
+```powershell
 docker compose up -d mysql
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=dev'
 ```
 
-Profile dev dùng localhost:5432, database/user starter, password local-development-only.
-Nếu sửa .env, export DB_NAME, DB_PORT, DB_USERNAME, DB_PASSWORD tương ứng vào shell chạy Java.
-Spring Boot/Maven không tự đọc .env; Compose đọc file này để nội suy cấu hình.
-Ví dụ PowerShell: `$env:DB_USERNAME = "starter"`; POSIX: `export DB_USERNAME=starter`.
+Profile `dev` dùng `localhost:3306`, database/user `starter` và mật khẩu
+`local-development-only`. Java local không tự đọc `.env`; nếu thay cấu hình,
+đặt `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` trong môi trường chạy Java.
 
-## Build và test
+## Kiểm thử
 
-```sh
-./mvnw clean verify
+```powershell
+.\mvnw.cmd verify
 ```
 
-Test contextLoads khởi động MySQL 8.4 qua Testcontainers; Docker phải đang chạy.
-Test tự cấp connection properties, không dùng database development, không bỏ qua khi thiếu Docker.
-JAR: target/application.jar.
-
-Chỉ đóng gói khi không có Docker (không xác nhận test thành công):
-
-```sh
-./mvnw -DskipTests package
-java -jar target/application.jar --spring.profiles.active=dev
-```
+Test chạy trên MySQL riêng qua Testcontainers, kiểm tra schema, dữ liệu mẫu,
+snapshot, tổng tiền và ràng buộc database. Docker build bỏ qua test; chạy lệnh
+trên để kiểm chứng. JAR nằm ở `target/application.jar`.
 
 ## Endpoint kỹ thuật
 
-- Swagger UI: http://localhost:8080/swagger-ui.html (redirect /swagger-ui/index.html).
-- OpenAPI JSON: http://localhost:8080/v3/api-docs.
-- Actuator health: http://localhost:8080/actuator/health.
+- Health: http://localhost:8080/actuator/health
+- Swagger: http://localhost:8080/swagger-ui.html
+- OpenAPI: http://localhost:8080/v3/api-docs
 
-```sh
-curl -f http://localhost:8080/actuator/health
-curl -f http://localhost:8080/swagger-ui/index.html
-curl -f http://localhost:8080/v3/api-docs
-```
+Security hiện chỉ mở các endpoint này. Swagger chưa có API nghiệp vụ.
 
-Health trả status UP khi database hoạt động. Swagger không có business operation;
-thông báo "No operations defined in spec!" là bình thường.
-Security chỉ mở các endpoint kỹ thuật trên, từ chối request khác và giữ CSRF mặc định.
-Không có login, tài khoản mặc định hoặc JWT implementation. Actuator chỉ expose health.
+## Database
 
-## Environment variables
+Schema có 7 bảng nghiệp vụ và view `order_totals`. Hibernate dùng `ddl-auto=none`;
+timestamp lưu UTC. Hai script nằm trong `src/main/resources/db/`:
 
-| Biến | Ý nghĩa | Mặc định development |
-| --- | --- | --- |
-| DB_URL | JDBC URL JVM; Compose đặt hostname mysql | jdbc:mysql://localhost:3306/starter |
-| DB_NAME | Database khi Compose khởi tạo MySQL | starter |
-| DB_USERNAME | Database username | starter |
-| DB_PASSWORD | Database password | local-development-only |
-| DB_ROOT_PASSWORD | MySQL root password, dùng cho healthcheck | local-development-root-only |
-| DB_PORT | MySQL port host | 3306 |
-| SERVER_PORT | Port JVM local hoặc port backend host Compose | 8080 |
-| SPRING_PROFILES_ACTIVE | Profile Spring | Compose: dev; JVM: không mặc định |
+- `schema.sql`: tạo bảng còn thiếu và view; không sửa cấu trúc bảng đã tồn tại.
+- `seed.sql`: dữ liệu mẫu tùy chọn, nạp một lần trên database rỗng.
 
-Ngoài dev, DB_URL, DB_USERNAME, DB_PASSWORD bắt buộc. Backend trong Compose luôn nghe
-port 8080 trong container. Không commit .env thật; .env.example chỉ chứa giá trị mẫu.
-Hibernate ddl-auto=none không tạo schema. Flyway bật với migration trống;
-Flyway có thể tạo bảng lịch sử kỹ thuật flyway_schema_history. Không có migration SQL.
-
-## Project structure
-
-```text
-.mvn/wrapper/
-  maven-wrapper.jar
-  maven-wrapper.properties
-src/main/java/org/example/
-  Application.java
-  config/SecurityConfiguration.java
-src/main/resources/
-  application.yml
-  application-dev.yml
-  application-test.yml
-  db/migration/.gitkeep
-src/test/java/org/example/
-  ApplicationTests.java
-.dockerignore
-.env.example
-.gitattributes
-.gitignore
-Dockerfile
-compose.yaml
-mvnw
-mvnw.cmd
-pom.xml
-README.md
-```
+Docker chỉ chạy script khởi tạo khi tạo volume mới. Với database có sẵn hoặc chạy
+Java local ngoài Compose, dùng MySQL client để nạp schema nếu chưa có bảng.
+Thay đổi schema sau này dùng SQL thủ công; sao lưu trước khi sửa dữ liệu.

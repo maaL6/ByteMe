@@ -10,8 +10,10 @@ services:
       - "127.0.0.1:${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./src/main/resources/db/seed.sql:/opt/byteme/seed.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent" ]
+      test: [ "CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql --protocol=TCP -h 127.0.0.1 -u \"$$MYSQL_USER\" --database=\"$$MYSQL_DATABASE\" --execute='SELECT 1' >/dev/null 2>&1" ]
       interval: 5s
       timeout: 5s
       retries: 20
