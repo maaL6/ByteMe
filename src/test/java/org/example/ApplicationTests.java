@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -19,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ApplicationTests {
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    org.springframework.context.ApplicationContext context;
 
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
@@ -33,6 +37,9 @@ class ApplicationTests {
 
     @Test
     void contextLoads() {
+        assertFalse(context.containsBean("authController"));
+        assertFalse(context.containsBean("jwtDecoder"));
+        assertFalse(context.containsBean("rsaKey"));
         assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM users", Long.class));
         assertEquals(7L, jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
