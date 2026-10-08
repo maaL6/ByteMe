@@ -60,6 +60,69 @@ public final class OrderService {
         });
     }
 
+    public OrderRepository.OrderPage list(AuthenticatedUser user, OrderStatus status, OrderType type,
+            int page, int size) {
+        requireReader(user);
+        if (page < 0 || size < 1 || size > 100) throw failure("VALIDATION_ERROR", "page >= 0; size từ 1 đến 100.");
+        List<OrderStatus> statuses = List.of();
+        if (status != null) statuses = List.of(status);
+        else if (user.role() == Role.EMPLOYEE)
+            statuses = List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.SHIPPING);
+        Long ownerId = null;
+        if (user.role() == Role.CUSTOMER) ownerId = userId(user);
+        return orders.findAll(ownerId, statuses, type, page, size);
+    }
+
+    public Order get(AuthenticatedUser user, long id) {
+        requireReader(user);
+        requireId(id);
+        var order = orders.findById(id).orElseThrow(() -> failure("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
+        requireOwner(user, order);
+        return order;
+    }
+
+    public Order cancel(AuthenticatedUser user, long id) {
+        requireRole(user, Role.CUSTOMER);
+        return changeStatus(user, id, OrderStatus.CANCELLED);
+    }
+
+    public Order confirm(AuthenticatedUser user, long id) {
+        return updateStatus(user, id, OrderStatus.CONFIRMED);
+    }
+
+    public Order updateStatus(AuthenticatedUser user, long id, OrderStatus next) {
+        requireRole(user, Role.EMPLOYEE);
+        return changeStatus(user, id, next);
+    }
+
+    private Order changeStatus(AuthenticatedUser user, long id, OrderStatus next) {
+        requireId(id);
+        if (next == null) throw failure("VALIDATION_ERROR", "status là bắt buộc.");
+        long actorId = userId(user);
+        return transactions.execute(() -> {
+            var order = orders.lockById(id).orElseThrow(() -> failure("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
+            requireOwner(user, order);
+            boolean allowed = switch (order.status()) {
+                case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
+                case CONFIRMED -> next == OrderStatus.PROCESSING || next == OrderStatus.CANCELLED;
+                case PROCESSING -> next == OrderStatus.CANCELLED
+                        || (order.orderType() == OrderType.DINE_IN && next == OrderStatus.COMPLETED)
+                        || (order.orderType() == OrderType.DELIVERY && next == OrderStatus.SHIPPING);
+                case SHIPPING -> next == OrderStatus.COMPLETED;
+                case COMPLETED, CANCELLED -> false;
+            };
+            if (user.role() == Role.CUSTOMER)
+                allowed = order.status() == OrderStatus.PENDING && next == OrderStatus.CANCELLED;
+            if (!allowed) throw failure("INVALID_ORDER_TRANSITION", "Không thể chuyển trạng thái đơn hàng.");
+            if (next == OrderStatus.CANCELLED) {
+                var items = order.items().stream().sorted(Comparator.comparingLong(OrderItem::foodId)).toList();
+                for (var item : items) foods.lockById(item.foodId());
+                for (var item : items) foods.restoreStock(item.foodId(), item.quantity());
+            }
+            return orders.save(order.transitionTo(next, actorId, clock.instant().truncatedTo(ChronoUnit.MICROS)));
+        });
+    }
+
     private static CreateOrderCommand validate(CreateOrderCommand input) {
         if (input == null || input.orderType() == null || input.paymentMethod() == null)
             throw failure("VALIDATION_ERROR", "orderType và paymentMethod là bắt buộc.");
@@ -85,8 +148,18 @@ public final class OrderService {
         return result == null || result.isEmpty() ? null : result;
     }
 
+    private static void requireReader(AuthenticatedUser user) {
+        if (user.role() != Role.CUSTOMER && user.role() != Role.EMPLOYEE)
+            throw failure("FORBIDDEN", "Không có quyền xử lý đơn hàng.");
+    }
+
     private static void requireRole(AuthenticatedUser user, Role role) {
         if (user.role() != role) throw failure("FORBIDDEN", "Không có quyền thực hiện thao tác này.");
+    }
+
+    private static void requireOwner(AuthenticatedUser user, Order order) {
+        if (user.role() == Role.CUSTOMER && order.userId() != userId(user))
+            throw failure("FORBIDDEN", "Đơn hàng không thuộc khách hàng hiện tại.");
     }
 
     private static long userId(AuthenticatedUser user) {
@@ -95,6 +168,10 @@ public final class OrderService {
             if (id > 0) return id;
         } catch (NumberFormatException ignored) { }
         throw failure("FORBIDDEN", "JWT phải chứa ID tài khoản hợp lệ trong database.");
+    }
+
+    private static void requireId(long id) {
+        if (id <= 0) throw failure("VALIDATION_ERROR", "orderId phải là số nguyên dương.");
     }
 
     private static OrderFailure failure(String code, String message) { return new OrderFailure(code, message); }
