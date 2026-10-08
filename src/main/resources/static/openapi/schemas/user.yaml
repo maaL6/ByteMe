@@ -1,0 +1,80 @@
+Account:
+  type: object
+  additionalProperties: false
+  required:
+  - id
+  - fullName
+  - email
+  - phone
+  - role
+  - status
+  properties:
+    id:
+      type: string
+      minLength: 1
+      description: ID opaque; không quy định khóa DB.
+    fullName:
+      type: string
+      minLength: 1
+      maxLength: 150
+    email:
+      type: string
+      format: email
+      minLength: 3
+      maxLength: 254
+      description: Trim và lowercase theo quy ước ứng dụng trước lookup/unique; áp dụng cả tài khoản cấp
+        trước.
+    phone:
+      type: string
+      pattern: ^(?:0[0-9]{9}|\+[1-9][0-9]{7,14})$
+      description: Số nội địa 10 chữ số bắt đầu 0 hoặc số quốc tế; trim, không tự suy ra mã quốc gia.
+    role:
+      type: string
+      enum:
+      - CUSTOMER
+      - EMPLOYEE
+      - ADMIN
+    status:
+      type: string
+      enum:
+      - ACTIVE
+      - INACTIVE
+      - LOCKED
+RegisteredAccount:
+  type: object
+  additionalProperties: false
+  required:
+  - id
+  - fullName
+  - email
+  - phone
+  - role
+  - status
+  properties:
+    id:
+      type: string
+      minLength: 1
+      description: ID opaque; không quy định khóa DB.
+    fullName:
+      type: string
+      minLength: 1
+      maxLength: 150
+    email:
+      type: string
+      format: email
+      minLength: 3
+      maxLength: 254
+      description: Trim và lowercase theo quy ước ứng dụng trước lookup/unique; áp dụng cả tài khoản cấp
+        trước.
+    phone:
+      type: string
+      pattern: ^(?:0[0-9]{9}|\+[1-9][0-9]{7,14})$
+      description: Số nội địa 10 chữ số bắt đầu 0 hoặc số quốc tế; trim, không tự suy ra mã quốc gia.
+    role:
+      type: string
+      enum:
+      - CUSTOMER
+    status:
+      type: string
+      enum:
+      - ACTIVE
