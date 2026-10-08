@@ -1,0 +1,47 @@
+FieldError:
+  type: object
+  additionalProperties: false
+  required:
+  - field
+  - message
+  properties:
+    field:
+      type: string
+    message:
+      type: string
+ApiError:
+  type: object
+  additionalProperties: false
+  required:
+  - status
+  - code
+  - message
+  - path
+  - fieldErrors
+  properties:
+    status:
+      type: integer
+      minimum: 400
+      maximum: 599
+    code:
+      type: string
+      enum:
+      - VALIDATION_ERROR
+      - PASSWORD_MISMATCH
+      - ACCOUNT_CONFLICT
+      - INVALID_CREDENTIALS
+      - ACCOUNT_NOT_ACTIVE
+      - LOGIN_RATE_LIMITED
+      - UNSUPPORTED_MEDIA_TYPE
+      - INTERNAL_ERROR
+    message:
+      type: string
+      minLength: 1
+    path:
+      type: string
+      pattern: ^/api/auth/
+    fieldErrors:
+      type: array
+      items:
+        $ref: '#/FieldError'
+      description: Luôn có; rỗng khi không có lỗi field. Không echo giá trị request.

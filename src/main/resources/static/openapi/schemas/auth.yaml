@@ -1,0 +1,84 @@
+RegisterRequest:
+  type: object
+  additionalProperties: false
+  required:
+  - fullName
+  - email
+  - phone
+  - password
+  - confirmPassword
+  properties:
+    fullName:
+      type: string
+      minLength: 1
+      maxLength: 150
+      description: Trim, không chỉ gồm whitespace.
+    email:
+      type: string
+      format: email
+      minLength: 3
+      maxLength: 254
+      description: Trim và lowercase theo quy ước ứng dụng trước lookup/unique; áp dụng cả tài khoản cấp
+        trước.
+    phone:
+      type: string
+      pattern: ^(?:0[0-9]{9}|\+[1-9][0-9]{7,14})$
+      description: Số nội địa 10 chữ số bắt đầu 0 hoặc số quốc tế; trim, không tự suy ra mã quốc gia.
+    password:
+      type: string
+      format: password
+      writeOnly: true
+      minLength: 8
+      maxLength: 72
+      description: Không trim. Service kiểm tra thêm tối đa 72 byte UTF-8; không được cắt ngầm.
+    confirmPassword:
+      type: string
+      format: password
+      writeOnly: true
+      minLength: 8
+      maxLength: 72
+      description: Giữ nguyên; phải bằng password, kiểm tra tại Service và tối đa 72 byte UTF-8.
+LoginRequest:
+  type: object
+  additionalProperties: false
+  required:
+  - email
+  - password
+  properties:
+    email:
+      type: string
+      format: email
+      minLength: 3
+      maxLength: 254
+      description: Trim và lowercase theo quy ước ứng dụng trước lookup/unique; áp dụng cả tài khoản cấp
+        trước.
+    password:
+      type: string
+      format: password
+      writeOnly: true
+      minLength: 1
+      maxLength: 72
+      description: Không trim; tối đa 72 byte UTF-8. Không áp dụng lại minLength đăng ký.
+TokenResponse:
+  type: object
+  additionalProperties: false
+  required:
+  - accessToken
+  - tokenType
+  - expiresIn
+  - user
+  properties:
+    accessToken:
+      type: string
+      minLength: 1
+      description: JWT đã ký; ví dụ là chuỗi giả, không phải secret.
+    tokenType:
+      type: string
+      enum:
+      - Bearer
+    expiresIn:
+      type: integer
+      minimum: 1
+      description: TTL thực tế theo giây; baseline thiết kế 5400, theo cấu hình AUTH_ACCESS_TOKEN_TTL_SECONDS.
+    user:
+      $ref: user.yaml#/Account
