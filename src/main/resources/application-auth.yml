@@ -1,8 +1,0 @@
-auth:
-  private-key-file: ${AUTH_JWT_PRIVATE_KEY_FILE:.local/private.pem}
-  public-key-file: ${AUTH_JWT_PUBLIC_KEY_FILE:.local/public.pem}
-  ttl-seconds: ${AUTH_ACCESS_TOKEN_TTL_SECONDS:5400}
-  login:
-    email-limit: ${AUTH_LOGIN_EMAIL_LIMIT:10}
-    ip-limit: ${AUTH_LOGIN_IP_LIMIT:100}
-    window-seconds: ${AUTH_LOGIN_WINDOW_SECONDS:900}

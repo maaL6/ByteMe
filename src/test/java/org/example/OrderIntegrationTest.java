@@ -49,6 +49,7 @@ class OrderIntegrationTest {
         properties.add("spring.datasource.url", MYSQL::getJdbcUrl);
         properties.add("spring.datasource.username", MYSQL::getUsername);
         properties.add("spring.datasource.password", MYSQL::getPassword);
+        TestAuthKeys.register(properties);
     }
 
     @Autowired JdbcTemplate db;

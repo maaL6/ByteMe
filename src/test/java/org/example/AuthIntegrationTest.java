@@ -1,7 +1,5 @@
 package org.example;
 
-import java.nio.file.*;
-import java.security.KeyPairGenerator;
 import java.util.*;
 import java.util.concurrent.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,29 +23,16 @@ import org.example.auth.service.port.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
-@org.springframework.test.context.ActiveProfiles("auth")
+@org.springframework.test.context.ActiveProfiles("test")
 @org.springframework.context.annotation.Import(AuthIntegrationTest.OtherModuleController.class)
 @SpringBootTest @AutoConfigureMockMvc(print=MockMvcPrint.NONE) @Testcontainers
 class AuthIntegrationTest {
     @Container static final MySQLContainer<?> MYSQL=new MySQLContainer<>("mysql:8.4")
         .withDatabaseName("auth_integration").withInitScript("db/schema.sql");
-    static final Path KEYS;
-    static {
-        try {
-            KEYS=Files.createTempDirectory("sa-auth-test-keys");
-            var generator=KeyPairGenerator.getInstance("RSA");generator.initialize(2048);var pair=generator.generateKeyPair();
-            Files.writeString(KEYS.resolve("private.pem"),pem("PRIVATE KEY",pair.getPrivate().getEncoded()));
-            if (Files.getFileStore(KEYS).supportsFileAttributeView("posix"))
-                Files.setPosixFilePermissions(KEYS.resolve("private.pem"),java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
-            Files.writeString(KEYS.resolve("public.pem"),pem("PUBLIC KEY",pair.getPublic().getEncoded()));
-        } catch(Exception e) { throw new ExceptionInInitializerError(e); }
-    }
-    static String pem(String name,byte[] bytes) { return "-----BEGIN "+name+"-----\n"+Base64.getMimeEncoder(64,new byte[]{10}).encodeToString(bytes)+"\n-----END "+name+"-----\n"; }
     @DynamicPropertySource static void config(DynamicPropertyRegistry r) {
         r.add("spring.datasource.url",MYSQL::getJdbcUrl);r.add("spring.datasource.username",MYSQL::getUsername);
         r.add("spring.datasource.password",MYSQL::getPassword);
-        r.add("auth.private-key-file",()->KEYS.resolve("private.pem").toString());
-        r.add("auth.public-key-file",()->KEYS.resolve("public.pem").toString());
+        TestAuthKeys.register(r);
     }
     @Autowired MockMvc http;@Autowired ObjectMapper json;@Autowired JdbcTemplate db;
     @Autowired JwtDecoder decoder;@Autowired AccountRepository repository;@Autowired PasswordHasher passwords;
@@ -153,8 +138,5 @@ class AuthIntegrationTest {
         assertEquals(400,http.perform(post("/api/auth/token").contentType("application/json")
                 .content("{\"email\":\"valid@scope.example\",\"password\":\"x\"} {}"))
                 .andReturn().getResponse().getStatus());
-    }
-    @AfterAll static void cleanupKeys() throws Exception {
-        Files.deleteIfExists(KEYS.resolve("private.pem"));Files.deleteIfExists(KEYS.resolve("public.pem"));Files.deleteIfExists(KEYS);
     }
 }

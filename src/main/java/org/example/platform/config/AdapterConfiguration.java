@@ -15,7 +15,6 @@ import org.example.auth.service.*;
 import org.example.auth.service.port.*;
 import org.example.platform.security.*;
 @Configuration
-@Profile("auth")
 public class AdapterConfiguration {
     @Bean Clock clock() { return Clock.systemUTC(); }
     @Bean PasswordHasher passwordHasher() { return new BCryptPasswordHasher(); }

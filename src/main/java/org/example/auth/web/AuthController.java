@@ -1,12 +1,10 @@
 package org.example.auth.web;
 import org.springframework.http.*;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 import org.example.auth.domain.account.AccountRecord;
 import org.example.auth.service.*;
 import org.example.platform.security.LoginRateLimiter;
 @RestController
-@Profile("auth")
 public class AuthController {
     public record RegisterRequest(String fullName,String email,String phone,String password,String confirmPassword) {
         @Override public String toString() { return "RegisterRequest[REDACTED]"; }
