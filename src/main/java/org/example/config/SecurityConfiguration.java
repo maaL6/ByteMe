@@ -1,5 +1,6 @@
 package org.example.config;
 import java.util.List;
+import org.springframework.http.HttpMethod;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.*;
 import org.springframework.core.annotation.Order;
@@ -23,7 +24,13 @@ public class SecurityConfiguration {
     }
     @Bean @Profile("auth") @Order(2) SecurityFilterChain protectedApi(HttpSecurity http,ObjectMapper json) throws Exception {
         return http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-          .authorizeHttpRequests(auth->auth.requestMatchers("/docs/**","/docs","/openapi/**","/swagger-ui.html","/swagger-ui/**","/v3/api-docs", "/v3/api-docs/**", "/actuator/health", "/actuator/health/**").permitAll().anyRequest().authenticated())
+          .authorizeHttpRequests(auth->auth.requestMatchers("/docs/**","/docs","/openapi/**","/swagger-ui.html","/swagger-ui/**","/v3/api-docs", "/v3/api-docs/**", "/actuator/health", "/actuator/health/**").permitAll()
+              .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("CUSTOMER")
+              .requestMatchers(HttpMethod.DELETE, "/api/orders/*").hasRole("CUSTOMER")
+              .requestMatchers(HttpMethod.POST, "/api/orders/*/confirm").hasRole("EMPLOYEE")
+              .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasRole("EMPLOYEE")
+              .requestMatchers(HttpMethod.GET, "/api/orders", "/api/orders/**").hasAnyRole("CUSTOMER", "EMPLOYEE")
+              .anyRequest().authenticated())
           .oauth2ResourceServer(resource->resource.jwt(jwt->jwt.jwtAuthenticationConverter(token->{
               Role role=Role.valueOf(token.getClaimAsString("role"));
               return UsernamePasswordAuthenticationToken.authenticated(new AuthenticatedUser(token.getSubject(),role),"",
