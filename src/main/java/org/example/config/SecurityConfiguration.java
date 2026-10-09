@@ -25,6 +25,7 @@ public class SecurityConfiguration {
     @Bean @Profile("auth") @Order(2) SecurityFilterChain protectedApi(HttpSecurity http,ObjectMapper json) throws Exception {
         return http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
           .authorizeHttpRequests(auth->auth.requestMatchers("/docs/**","/docs","/openapi/**","/swagger-ui.html","/swagger-ui/**","/v3/api-docs", "/v3/api-docs/**", "/actuator/health", "/actuator/health/**").permitAll()
+              .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
               .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("CUSTOMER")
               .requestMatchers(HttpMethod.DELETE, "/api/orders/*").hasRole("CUSTOMER")
               .requestMatchers(HttpMethod.POST, "/api/orders/*/confirm").hasRole("EMPLOYEE")
@@ -43,10 +44,16 @@ public class SecurityConfiguration {
               json.writeValue(s.getOutputStream(),new ApiErrors.Body(403,"FORBIDDEN","Không có quyền truy cập.",r.getRequestURI(),List.of()));
           })).build();
     }
-    /** Chế độ mặc định chưa bật Auth: health/docs public, các request khác bị từ chối. */
+    /** Without Auth, keep the Food/Cart development endpoints available. */
     @Bean @Profile("!auth") SecurityFilterChain inactiveAuth(HttpSecurity http) throws Exception {
-        return http.authorizeHttpRequests(auth -> auth.requestMatchers(
+        return http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.requestMatchers(
                 "/actuator/health", "/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**",
-                "/v3/api-docs", "/v3/api-docs/**").permitAll().anyRequest().denyAll()).build();
+                "/v3/api-docs", "/v3/api-docs/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/foods").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/foods/**").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/api/foods/**").permitAll()
+                .requestMatchers("/api/cart", "/api/cart/**").permitAll()
+                .anyRequest().denyAll()).build();
     }
 }
