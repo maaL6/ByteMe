@@ -1,0 +1,297 @@
+registerCustomer201:
+  description: Account được tạo; không cung cấp GET Account hoặc Location. Không có password/hash.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/user.yaml#/RegisteredAccount
+      examples:
+        created:
+          value:
+            id: account-customer-001
+            fullName: Khách hàng mẫu
+            email: customer@example.com
+            phone: '+12025550101'
+            role: CUSTOMER
+            status: ACTIVE
+registerCustomer400:
+  description: Dữ liệu đầu vào không hợp lệ. / Mật khẩu xác nhận không khớp.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        VALIDATION_ERROR:
+          value:
+            status: 400
+            code: VALIDATION_ERROR
+            message: Dữ liệu đầu vào không hợp lệ.
+            path: /api/auth/register
+            fieldErrors: []
+        PASSWORD_MISMATCH:
+          value:
+            status: 400
+            code: PASSWORD_MISMATCH
+            message: Mật khẩu xác nhận không khớp.
+            path: /api/auth/register
+            fieldErrors:
+            - field: confirmPassword
+              message: Phải trùng password.
+registerCustomer409:
+  description: Thông tin tài khoản đã được sử dụng.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        ACCOUNT_CONFLICT:
+          value:
+            status: 409
+            code: ACCOUNT_CONFLICT
+            message: Thông tin tài khoản đã được sử dụng.
+            path: /api/auth/register
+            fieldErrors: []
+registerCustomer415:
+  description: Chỉ hỗ trợ application/json.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        UNSUPPORTED_MEDIA_TYPE:
+          value:
+            status: 415
+            code: UNSUPPORTED_MEDIA_TYPE
+            message: Chỉ hỗ trợ application/json.
+            path: /api/auth/register
+            fieldErrors: []
+registerCustomer500:
+  description: Đã xảy ra lỗi hệ thống.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        INTERNAL_ERROR:
+          value:
+            status: 500
+            code: INTERNAL_ERROR
+            message: Đã xảy ra lỗi hệ thống.
+            path: /api/auth/register
+            fieldErrors: []
+issueAccessToken200:
+  description: Credentials đúng và account ACTIVE; expiresIn là TTL thực tế theo giây.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/auth.yaml#/TokenResponse
+      examples:
+        customer:
+          value:
+            accessToken: jwt-example-not-valid
+            tokenType: Bearer
+            expiresIn: 5400
+            user:
+              id: account-customer-001
+              fullName: Khách hàng mẫu
+              email: customer@example.com
+              phone: '+12025550101'
+              role: CUSTOMER
+              status: ACTIVE
+        staff:
+          value:
+            accessToken: jwt-example-not-valid
+            tokenType: Bearer
+            expiresIn: 5400
+            user:
+              id: account-staff-001
+              fullName: Khách hàng mẫu
+              email: staff@example.com
+              phone: '+12025550101'
+              role: EMPLOYEE
+              status: ACTIVE
+        admin:
+          value:
+            accessToken: jwt-example-not-valid
+            tokenType: Bearer
+            expiresIn: 5400
+            user:
+              id: account-admin-001
+              fullName: Khách hàng mẫu
+              email: admin@example.com
+              phone: '+12025550101'
+              role: ADMIN
+              status: ACTIVE
+issueAccessToken400:
+  description: Dữ liệu đầu vào không hợp lệ.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        VALIDATION_ERROR:
+          value:
+            status: 400
+            code: VALIDATION_ERROR
+            message: Dữ liệu đầu vào không hợp lệ.
+            path: /api/auth/token
+            fieldErrors: []
+issueAccessToken401:
+  description: Email hoặc mật khẩu không chính xác.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        INVALID_CREDENTIALS:
+          value:
+            status: 401
+            code: INVALID_CREDENTIALS
+            message: Email hoặc mật khẩu không chính xác.
+            path: /api/auth/token
+            fieldErrors: []
+issueAccessToken403:
+  description: Tài khoản không hoạt động.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        ACCOUNT_NOT_ACTIVE:
+          value:
+            status: 403
+            code: ACCOUNT_NOT_ACTIVE
+            message: Tài khoản không hoạt động.
+            path: /api/auth/token
+            fieldErrors: []
+issueAccessToken429:
+  description: Vượt giới hạn đăng nhập.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+    Retry-After:
+      description: Số giây nguyên dương cần chờ, tính theo rate limit cấu hình.
+      schema:
+        type: integer
+        minimum: 1
+      example: 60
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        LOGIN_RATE_LIMITED:
+          value:
+            status: 429
+            code: LOGIN_RATE_LIMITED
+            message: Vượt giới hạn đăng nhập.
+            path: /api/auth/token
+            fieldErrors: []
+issueAccessToken415:
+  description: Chỉ hỗ trợ application/json.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        UNSUPPORTED_MEDIA_TYPE:
+          value:
+            status: 415
+            code: UNSUPPORTED_MEDIA_TYPE
+            message: Chỉ hỗ trợ application/json.
+            path: /api/auth/token
+            fieldErrors: []
+issueAccessToken500:
+  description: Đã xảy ra lỗi hệ thống.
+  headers:
+    Cache-Control:
+      description: Không cache dữ liệu Auth.
+      schema:
+        type: string
+        enum:
+        - no-store
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/common.yaml#/ApiError
+      examples:
+        INTERNAL_ERROR:
+          value:
+            status: 500
+            code: INTERNAL_ERROR
+            message: Đã xảy ra lỗi hệ thống.
+            path: /api/auth/token
+            fieldErrors: []

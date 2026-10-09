@@ -1,0 +1,88 @@
+accounts:
+  post:
+    tags:
+    - Auth
+    operationId: registerCustomer
+    summary: UC-01 — đăng ký CUSTOMER ACTIVE
+    description: PUBLIC; không cần JWT. Chỉ tạo CUSTOMER/ACTIVE. Field role/status bị từ chối. Confirm
+      password và giới hạn byte UTF-8 kiểm tra tại Service. Không tự cấp token.
+    x-use-case: UC-01
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/auth.yaml#/RegisterRequest
+          example:
+            fullName: Khách hàng mẫu
+            email: customer@example.com
+            phone: '+12025550101'
+            password: DemoOnly123!
+            confirmPassword: DemoOnly123!
+    responses:
+      '201':
+        $ref: ../responses/common.yaml#/registerCustomer201
+      '400':
+        $ref: ../responses/common.yaml#/registerCustomer400
+      '409':
+        $ref: ../responses/common.yaml#/registerCustomer409
+      '415':
+        $ref: ../responses/common.yaml#/registerCustomer415
+      '500':
+        $ref: ../responses/common.yaml#/registerCustomer500
+tokens:
+  post:
+    tags:
+    - Auth
+    operationId: issueAccessToken
+    summary: UC-02 — đăng nhập CUSTOMER/EMPLOYEE/ADMIN
+    description: 'PUBLIC; CUSTOMER/EMPLOYEE/ADMIN dùng chung email/password JSON, không cần JWT. EMPLOYEE/ADMIN
+      cấp trước trong DB. Baseline AUTH-A-01/02: TTL 5400 giây; 10 request body hợp lệ/email và 100 request/IP
+      trong 900 giây. Tính cả thành công, không reset sớm hoặc tự LOCKED. JWT mẫu không dùng được. Signing/keys/security
+      handler thuộc mục C.'
+    x-use-case: UC-02
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/auth.yaml#/LoginRequest
+          examples:
+            customer:
+              value:
+                email: customer@example.com
+                password: DemoOnly123!
+            staff:
+              value:
+                email: staff@example.com
+                password: DemoOnly123!
+            admin:
+              value:
+                email: admin@example.com
+                password: DemoOnly123!
+    responses:
+      '200':
+        $ref: ../responses/common.yaml#/issueAccessToken200
+      '400':
+        $ref: ../responses/common.yaml#/issueAccessToken400
+      '401':
+        $ref: ../responses/common.yaml#/issueAccessToken401
+      '403':
+        $ref: ../responses/common.yaml#/issueAccessToken403
+      '429':
+        $ref: ../responses/common.yaml#/issueAccessToken429
+      '415':
+        $ref: ../responses/common.yaml#/issueAccessToken415
+      '500':
+        $ref: ../responses/common.yaml#/issueAccessToken500
+    x-auth-policy:
+      accessTokenTtlSeconds: 5400
+      loginWindowSeconds: 900
+      emailRequestLimit: 10
+      ipRequestLimit: 100
+      counterStorage: in-memory per instance
+      window: fixed per key
+      designStatus: Approved
+      reference: docs/api/auth-design.md

@@ -1,25 +1,55 @@
 package org.example.config;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import java.util.List;
 import org.springframework.http.HttpMethod;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.annotation.*;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-
-@Configuration(proxyBeanMethods = false)
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.example.platform.security.*;
+import org.example.auth.web.ApiErrors;
+import org.example.shared.api.Role;
+import org.example.shared.api.AuthenticatedUser;
+@Configuration
 public class SecurityConfiguration {
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(requests -> requests
-                .requestMatchers("/actuator/health", "/actuator/health/**",
-                        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs",
-                        "/v3/api-docs/**").permitAll()
+    @Bean @Profile("auth") @Order(1) SecurityFilterChain publicAuth(HttpSecurity http,LoginRateLimiter limiter,ObjectMapper json) throws Exception {
+        return http.securityMatcher("/api/auth/register","/api/auth/token")
+          .csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+          .authorizeHttpRequests(auth->auth.anyRequest().permitAll())
+          .addFilterBefore(new LoginIpFilter(limiter,json),UsernamePasswordAuthenticationFilter.class).build();
+    }
+    @Bean @Profile("auth") @Order(2) SecurityFilterChain protectedApi(HttpSecurity http,ObjectMapper json) throws Exception {
+        return http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+          .authorizeHttpRequests(auth->auth.requestMatchers("/docs/**","/docs","/openapi/**","/swagger-ui.html","/swagger-ui/**","/v3/api-docs", "/v3/api-docs/**", "/actuator/health", "/actuator/health/**").permitAll()
+              .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
+              .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("CUSTOMER")
+              .requestMatchers(HttpMethod.DELETE, "/api/orders/*").hasRole("CUSTOMER")
+              .requestMatchers(HttpMethod.POST, "/api/orders/*/confirm").hasRole("EMPLOYEE")
+              .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasRole("EMPLOYEE")
+              .requestMatchers(HttpMethod.GET, "/api/orders", "/api/orders/**").hasAnyRole("CUSTOMER", "EMPLOYEE")
+              .anyRequest().authenticated())
+          .oauth2ResourceServer(resource->resource.jwt(jwt->jwt.jwtAuthenticationConverter(token->{
+              Role role=Role.valueOf(token.getClaimAsString("role"));
+              return UsernamePasswordAuthenticationToken.authenticated(new AuthenticatedUser(token.getSubject(),role),"",
+                  List.of(new SimpleGrantedAuthority("ROLE_"+role.name())));
+          })).authenticationEntryPoint((r,s,e)->{
+              s.setStatus(401);s.setContentType("application/json");s.setHeader("WWW-Authenticate","Bearer");s.setHeader("Cache-Control","no-store");
+              json.writeValue(s.getOutputStream(),new ApiErrors.Body(401,"UNAUTHENTICATED","Cần token hợp lệ.",r.getRequestURI(),List.of()));
+          }).accessDeniedHandler((r,s,e)->{
+              s.setStatus(403);s.setContentType("application/json");s.setHeader("Cache-Control","no-store");
+              json.writeValue(s.getOutputStream(),new ApiErrors.Body(403,"FORBIDDEN","Không có quyền truy cập.",r.getRequestURI(),List.of()));
+          })).build();
+    }
+    /** Without Auth, keep the Food/Cart development endpoints available. */
+    @Bean @Profile("!auth") SecurityFilterChain inactiveAuth(HttpSecurity http) throws Exception {
+        return http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.requestMatchers(
+                "/actuator/health", "/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**",
+                "/v3/api-docs", "/v3/api-docs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
-                // For development/testing purpose without full auth module, permit all or configure a mock JWT filter.
-                // We permit all here for testing with Postman as requested since Auth module isn't implemented.
                 .requestMatchers(HttpMethod.POST, "/api/foods").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/foods/**").permitAll()
                 .requestMatchers(HttpMethod.DELETE, "/api/foods/**").permitAll()
