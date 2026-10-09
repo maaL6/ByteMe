@@ -1,0 +1,9 @@
+# Explicit Auth overlay; the base compose.yaml remains unchanged.
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev,auth
+      AUTH_JWT_PRIVATE_KEY_FILE: /run/auth/private.pem
+      AUTH_JWT_PUBLIC_KEY_FILE: /run/auth/public.pem
+    volumes:
+      - ./.local/docker-keys:/run/auth:ro

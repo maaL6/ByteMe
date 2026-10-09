@@ -1,0 +1,46 @@
+openapi: 3.0.3
+info:
+  title: SA — Auth API
+  version: 1.0.0
+  description: 'Hợp đồng thiết kế UC-01/02. Nguồn: docs/use-cases/UC-01.md, UC-02.md và docs/api/auth-contract.md.
+    Quyết định CUSTOMER ACTIVE và đăng nhập chung đã được xác nhận; hợp đồng Auth Approved ngày 2026-10-05. Đây là spec
+    Auth, không phải OpenAPI toàn hệ thống. Route đổi sang /api/auth/register và /api/auth/token theo yêu cầu người học ngày 2026-10-08; đang chờ thống nhất tích hợp với nhóm. Ví dụ hoàn toàn tổng hợp.'
+servers:
+- url: /
+  description: Cùng origin triển khai; production dùng HTTPS. Prefix /api/auth nằm trực tiếp trong paths.
+tags:
+- name: Auth
+  description: Đăng ký CUSTOMER và đăng nhập chung ba role.
+security: []
+paths:
+  /api/auth/register:
+    $ref: ./paths/auth.yaml#/accounts
+  /api/auth/token:
+    $ref: ./paths/auth.yaml#/tokens
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Dành cho các operation được bảo vệ khi tích hợp toàn hệ thống. Hai operation Auth
+        có security: [] và không yêu cầu token.'
+  schemas:
+    RegisterRequest:
+      $ref: ./schemas/auth.yaml#/RegisterRequest
+    LoginRequest:
+      $ref: ./schemas/auth.yaml#/LoginRequest
+    Account:
+      $ref: ./schemas/user.yaml#/Account
+    RegisteredAccount:
+      $ref: ./schemas/user.yaml#/RegisteredAccount
+    TokenResponse:
+      $ref: ./schemas/auth.yaml#/TokenResponse
+    FieldError:
+      $ref: ./schemas/common.yaml#/FieldError
+    ApiError:
+      $ref: ./schemas/common.yaml#/ApiError
+x-document-status: Approved
+x-security-parameters: 'Baseline thiết kế mục A: TTL 5400 giây; 10 lần/email và 100 lần/IP trong 900 giây;
+  principal/repository tại docs/api/auth-design.md. Implementation local RS256/MySQL theo ByteMe ngày 2026-10-07;
+  xem docs/api/auth-implementation.md. Phê duyệt hợp đồng Auth/mục A; vận hành production còn mở.'
