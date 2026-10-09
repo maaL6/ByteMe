@@ -37,7 +37,8 @@ class AuthIntegrationTest {
             KEYS=Files.createTempDirectory("sa-auth-test-keys");
             var generator=KeyPairGenerator.getInstance("RSA");generator.initialize(2048);var pair=generator.generateKeyPair();
             Files.writeString(KEYS.resolve("private.pem"),pem("PRIVATE KEY",pair.getPrivate().getEncoded()));
-            Files.setPosixFilePermissions(KEYS.resolve("private.pem"),java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+            if (Files.getFileStore(KEYS).supportsFileAttributeView("posix"))
+                Files.setPosixFilePermissions(KEYS.resolve("private.pem"),java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             Files.writeString(KEYS.resolve("public.pem"),pem("PUBLIC KEY",pair.getPublic().getEncoded()));
         } catch(Exception e) { throw new ExceptionInInitializerError(e); }
     }
