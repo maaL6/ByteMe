@@ -7,7 +7,6 @@ import java.lang.reflect.Type;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.cfg.*;
 import com.fasterxml.jackson.databind.type.LogicalType;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -17,7 +16,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAd
 
 /** JSON strict chỉ cho Auth; không đổi ObjectMapper dùng chung của module khác. */
 @ControllerAdvice(assignableTypes = AuthController.class)
-@Profile("auth")
 public class AuthJsonAdvice extends RequestBodyAdviceAdapter {
     private final ObjectMapper strict;
     public AuthJsonAdvice(ObjectMapper shared) {

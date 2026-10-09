@@ -6,8 +6,8 @@ Không thêm bảng hoặc thư viện. Cart CRUD dùng JPA; adapter checkout d�
 
 ## Endpoint
 
-Các route Order bật cùng profile `auth`; dùng JWT từ đăng nhập thật để subject
-khớp ID tài khoản trong database. Swagger tại `/swagger-ui/index.html` có bearerAuth.
+Auth luôn bật; dùng JWT từ đăng nhập thật để subject khớp ID tài khoản trong database.
+Swagger tại `/swagger-ui/index.html` có bearerAuth.
 
 | Method | Endpoint | Quyền | Kết quả |
 | --- | --- | --- | --- |
@@ -81,7 +81,7 @@ dùng INSERT ... ON DUPLICATE KEY UPDATE để tạo giỏ an toàn khi có requ
 Order lấy giá/trạng thái/tồn kho từ Food, lưu snapshot, trừ kho và dọn giỏ cùng commit;
 lỗi ở bất kỳ bước nào sẽ rollback toàn bộ. Giữ hàng carts để khách tiếp tục thêm món.
 
-Các API `/api/cart` và `/api/cart/items/**` yêu cầu profile `auth`, Bearer JWT và role
+Các API `/api/cart` và `/api/cart/items/**` yêu cầu Bearer JWT và role
 CUSTOMER. ID khách lấy từ JWT; header `X-User-Id` không còn được sử dụng. GET giỏ chưa
 tồn tại trả 404; sau checkout trả giỏ có items rỗng. Item không nằm trong giỏ hiện tại
 trả 404, không thể sửa/xóa item của khách khác.

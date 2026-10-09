@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +17,6 @@ import org.example.order.service.OrderService;
 import org.example.shared.api.AuthenticatedUser;
 
 @RestController
-@Profile("auth")
 @RequestMapping(path = "/api/orders", produces = MediaType.APPLICATION_JSON_VALUE)
 @SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT")
 @SecurityRequirement(name = "bearerAuth")

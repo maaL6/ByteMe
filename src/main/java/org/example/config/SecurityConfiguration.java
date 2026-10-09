@@ -16,13 +16,13 @@ import org.example.shared.api.Role;
 import org.example.shared.api.AuthenticatedUser;
 @Configuration
 public class SecurityConfiguration {
-    @Bean @Profile("auth") @Order(1) SecurityFilterChain publicAuth(HttpSecurity http,LoginRateLimiter limiter,ObjectMapper json) throws Exception {
+    @Bean @Order(1) SecurityFilterChain publicAuth(HttpSecurity http,LoginRateLimiter limiter,ObjectMapper json) throws Exception {
         return http.securityMatcher("/api/auth/register","/api/auth/token")
           .csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
           .authorizeHttpRequests(auth->auth.anyRequest().permitAll())
           .addFilterBefore(new LoginIpFilter(limiter,json),UsernamePasswordAuthenticationFilter.class).build();
     }
-    @Bean @Profile("auth") @Order(2) SecurityFilterChain protectedApi(HttpSecurity http,ObjectMapper json) throws Exception {
+    @Bean @Order(2) SecurityFilterChain protectedApi(HttpSecurity http,ObjectMapper json) throws Exception {
         return http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
           .authorizeHttpRequests(auth->auth.requestMatchers("/docs/**","/docs","/openapi/**","/swagger-ui.html","/swagger-ui/**","/v3/api-docs", "/v3/api-docs/**", "/actuator/health", "/actuator/health/**").permitAll()
               .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
@@ -44,16 +44,5 @@ public class SecurityConfiguration {
               s.setStatus(403);s.setContentType("application/json");s.setHeader("Cache-Control","no-store");
               json.writeValue(s.getOutputStream(),new ApiErrors.Body(403,"FORBIDDEN","Không có quyền truy cập.",r.getRequestURI(),List.of()));
           })).build();
-    }
-    /** Without Auth, keep only the Food development endpoints available. */
-    @Bean @Profile("!auth") SecurityFilterChain inactiveAuth(HttpSecurity http) throws Exception {
-        return http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.requestMatchers(
-                "/actuator/health", "/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**",
-                "/v3/api-docs", "/v3/api-docs/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/foods").permitAll()
-                .requestMatchers(HttpMethod.PUT, "/api/foods/**").permitAll()
-                .requestMatchers(HttpMethod.DELETE, "/api/foods/**").permitAll()
-                .anyRequest().denyAll()).build();
     }
 }

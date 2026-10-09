@@ -22,13 +22,16 @@ services:
     build:
       context: .
     environment:
-      SPRING_PROFILES_ACTIVE: dev
       DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-starter}
       DB_USERNAME: ${DB_USERNAME:-starter}
       DB_PASSWORD: ${DB_PASSWORD:-local-development-only}
       SERVER_PORT: 8080
+      AUTH_JWT_PRIVATE_KEY_FILE: /run/auth/private.pem
+      AUTH_JWT_PUBLIC_KEY_FILE: /run/auth/public.pem
     ports:
       - "127.0.0.1:${SERVER_PORT:-8080}:8080"
+    volumes:
+      - ./.local/docker-keys:/run/auth:ro
     depends_on:
       mysql:
         condition: service_healthy

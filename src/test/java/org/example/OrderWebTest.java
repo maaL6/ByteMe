@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(OrderController.class)
-@ActiveProfiles("auth")
+@ActiveProfiles("test")
 @Import(SecurityConfiguration.class)
 class OrderWebTest {
     @Autowired MockMvc http;

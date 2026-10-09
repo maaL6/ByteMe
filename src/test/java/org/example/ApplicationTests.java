@@ -12,7 +12,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -33,16 +33,17 @@ class ApplicationTests {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
+        TestAuthKeys.register(registry);
     }
 
     @Test
     void contextLoads() {
-        assertFalse(context.containsBean("authController"));
-        assertFalse(context.containsBean("orderController"));
+        assertTrue(context.containsBean("authController"));
+        assertTrue(context.containsBean("orderController"));
         org.junit.jupiter.api.Assertions.assertInstanceOf(org.example.cart.integration.MySqlCartCheckout.class,
                 context.getBean(org.example.order.service.port.CartCheckout.class));
-        assertFalse(context.containsBean("jwtDecoder"));
-        assertFalse(context.containsBean("rsaKey"));
+        assertTrue(context.containsBean("jwtDecoder"));
+        assertTrue(context.containsBean("rsaKey"));
         assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM users", Long.class));
         assertEquals(7L, jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
