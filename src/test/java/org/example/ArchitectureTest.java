@@ -9,10 +9,10 @@ class ArchitectureTest {
     @Test void pureContractsMustNotDependOnFrameworkOrDatabase() {
         var classes = new ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("org.example");
-        noClasses().that().resideInAnyPackage("..auth.domain..", "..auth.service..", "..shared.api..")
+        noClasses().that().resideInAnyPackage("..auth.domain..", "..auth.service..", "..order.domain..", "..order.service..", "..shared.api..")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "jakarta..",
                         "javax.servlet..", "java.sql..", "javax.sql..", "org.hibernate..",
-                        "..web..", "..persistence..", "..platform..", "..dev..")
+                        "..web..", "..persistence..", "..integration..", "..platform..", "..dev..")
                 .check(classes);
     }
 }
