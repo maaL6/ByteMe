@@ -17,7 +17,14 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.web.server.ResponseStatusException;
+import org.example.cart.integration.MySqlCartCheckout;
+import org.example.cart.service.CartService;
+import org.example.cart.dto.AddToCartRequest;
+import org.example.cart.dto.UpdateCartItemRequest;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -49,7 +56,8 @@ class OrderIntegrationTest {
     @Autowired UnitOfWork transactions;
     @Autowired OrderEvents events;
     @Autowired EventRecorder recorder;
-    @MockitoBean CartCheckout carts;
+    @MockitoSpyBean MySqlCartCheckout carts;
+    @Autowired CartService cartService;
 
     @TestConfiguration static class EventConfiguration {
         @Bean EventRecorder eventRecorder(JdbcTemplate db) { return new EventRecorder(db); }
@@ -69,7 +77,7 @@ class OrderIntegrationTest {
         }
     }
 
-    @BeforeEach void seedAndTestOnlyCartAdapter() {
+    @BeforeEach void seed() {
         // This database belongs solely to this ephemeral test container.
         for (String table : List.of("order_items", "orders", "cart_items", "carts", "foods", "categories", "users"))
             db.update("DELETE FROM " + table);
@@ -77,20 +85,6 @@ class OrderIntegrationTest {
                 .execute(Objects.requireNonNull(db.getDataSource()));
         recorder.received.clear();
         recorder.committedRows.clear();
-        // Only tests implement Cart; the application's default remains unavailable.
-        when(carts.lockByUserId(anyLong())).thenAnswer(call -> {
-            long userId = call.getArgument(0);
-            long cartId = db.queryForObject("SELECT id FROM carts WHERE user_id = ? FOR UPDATE", Long.class, userId);
-            var items = db.query("SELECT food_id, quantity FROM cart_items WHERE cart_id = ? ORDER BY food_id",
-                    (row, index) -> new CartCheckout.CartItem(row.getLong("food_id"), row.getInt("quantity")), cartId);
-            return new CartCheckout.CartSnapshot(cartId, items);
-        });
-        doAnswer(call -> {
-            long cartId = call.getArgument(0);
-            db.update("DELETE FROM cart_items WHERE cart_id = ?", cartId);
-            db.update("UPDATE carts SET version = version + 1 WHERE id = ?", cartId);
-            return null;
-        }).when(carts).clearItems(anyLong());
     }
 
     @Test void checkoutPersistsSnapshotsUpdatesStockAndEmitsAfterCommit() {
@@ -116,15 +110,17 @@ class OrderIntegrationTest {
     @Test void cartClearFailureRollsBackHeaderItemsStockAndCart() {
         int originalStock = stock(1);
         int originalCartItems = db.queryForObject("SELECT COUNT(*) FROM cart_items WHERE cart_id = 1", Integer.class);
+        long originalVersion = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
         doAnswer(call -> {
-            db.update("DELETE FROM cart_items WHERE cart_id = ?", (Long) call.getArgument(0));
+            call.callRealMethod();
             throw new IllegalStateException("Synthetic cart failure");
-        }).when(carts).clearItems(anyLong());
+        }).when(AopTestUtils.<MySqlCartCheckout>getUltimateTargetObject(carts)).clearItems(anyLong());
         assertThrows(IllegalStateException.class, () -> service.create(OrderServiceTest.CUSTOMER, OrderServiceTest.dineIn()));
         assertEquals(8, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
         assertEquals(16, db.queryForObject("SELECT COUNT(*) FROM order_items", Integer.class));
         assertEquals(originalStock, stock(1));
         assertEquals(originalCartItems, db.queryForObject("SELECT COUNT(*) FROM cart_items WHERE cart_id = 1", Integer.class));
+        assertEquals(originalVersion, db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class));
         assertTrue(recorder.received.isEmpty());
     }
 
@@ -219,6 +215,150 @@ class OrderIntegrationTest {
         assertEquals(9, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
         assertEquals(originalStock - 2, stock(1));
         assertEquals(1, recorder.received.size());
+    }
+
+    @Test void cartAdapterRequiresCheckoutTransactionAndMissingOrEmptyCartsDoNotCreateOrders() {
+        assertThrows(IllegalTransactionStateException.class, () -> carts.lockByUserId(4));
+        assertThrows(IllegalTransactionStateException.class, () -> carts.clearItems(1));
+        db.update("DELETE FROM carts WHERE user_id = 6");
+        OrderServiceTest.assertCode("CART_NOT_FOUND", () -> service.create(
+                new org.example.shared.api.AuthenticatedUser("6", org.example.shared.api.Role.CUSTOMER), OrderServiceTest.dineIn()));
+        db.update("DELETE FROM cart_items WHERE cart_id = 1");
+        OrderServiceTest.assertCode("EMPTY_CART", () -> service.create(OrderServiceTest.CUSTOMER, OrderServiceTest.dineIn()));
+        assertEquals(8, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
+    }
+
+    @Test void jpaCartCrudFeedsDeliveryCheckoutAndProtectsOtherOwners() {
+        long version = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
+        var cart = cartService.addToCart(4L, add(5, 2));
+        var tea = cart.getItems().stream().filter(item -> item.getFood().getId() == 5).findFirst().orElseThrow();
+        assertNotNull(tea.getId());
+        var update = new UpdateCartItemRequest();
+        update.setQuantity(3);
+        cartService.updateCartItem(4L, tea.getId(), update);
+        assertEquals(404, assertThrows(ResponseStatusException.class,
+                () -> cartService.removeCartItem(5L, tea.getId())).getStatusCode().value());
+        cartService.removeCartItem(4L, 2L);
+        assertTrue(db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class) > version);
+        int before = stock(5);
+        var order = service.create(OrderServiceTest.CUSTOMER, new org.example.order.service.CreateOrderCommand(
+                OrderType.DELIVERY, null, "Khách", "0900000004", "Địa chỉ", PaymentMethod.COD, null));
+        assertEquals(3, order.items().stream().filter(item -> item.foodId() == 5).findFirst().orElseThrow().quantity());
+        assertFalse(order.items().stream().anyMatch(item -> item.foodId() == 2));
+        assertEquals(before - 3, stock(5));
+        assertTrue(cartService.getCart(4L).getItems().isEmpty());
+        assertEquals(3, cartService.getCart(5L).getItems().size());
+    }
+
+    @Test void quantityOverflowDoesNotChangeCartOrVersion() {
+        db.update("UPDATE cart_items SET quantity = ? WHERE id = 1", Integer.MAX_VALUE);
+        long version = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
+        assertEquals(400, assertThrows(ResponseStatusException.class,
+                () -> cartService.addToCart(4L, add(1, 1))).getStatusCode().value());
+        assertEquals(Integer.MAX_VALUE, db.queryForObject("SELECT quantity FROM cart_items WHERE id = 1", Integer.class));
+        assertEquals(version, db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class));
+    }
+
+    @Test void concurrentFirstAdditionsCreateOneCartAndMergeQuantities() throws Exception {
+        db.update("DELETE FROM carts WHERE user_id = 6");
+        var gate = new CountDownLatch(1);
+        Callable<Void> add = () -> { gate.await(); cartService.addToCart(6L, add(5, 1)); return null; };
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(add);
+            var second = pool.submit(add);
+            gate.countDown();
+            first.get(15, TimeUnit.SECONDS);
+            second.get(15, TimeUnit.SECONDS);
+        }
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = 6", Integer.class));
+        var items = cartService.getCart(6L).getItems();
+        assertEquals(1, items.size());
+        assertEquals(2, items.getFirst().getQuantity());
+    }
+
+    @Test void concurrentCustomersCannotOversellLastFood() throws Exception {
+        db.update("DELETE FROM cart_items");
+        cartService.addToCart(4L, add(1, 1));
+        cartService.addToCart(5L, add(1, 1));
+        db.update("UPDATE foods SET stock_quantity = 1 WHERE id = 1");
+        var gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> checkoutAfter(gate, 4));
+            var second = pool.submit(() -> checkoutAfter(gate, 5));
+            gate.countDown();
+            assertNotEquals(first.get(15, TimeUnit.SECONDS), second.get(15, TimeUnit.SECONDS));
+        }
+        assertEquals(0, stock(1));
+        assertEquals(9, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
+        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM cart_items", Integer.class));
+    }
+
+    @Test void additionsWaitForCheckoutAndRemainInTheNextCart() throws Exception {
+        var clearing = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var adding = new CountDownLatch(1);
+        var added = new CountDownLatch(1);
+        doAnswer(call -> {
+            clearing.countDown();
+            assertTrue(release.await(10, TimeUnit.SECONDS));
+            return call.callRealMethod();
+        }).when(AopTestUtils.<MySqlCartCheckout>getUltimateTargetObject(carts)).clearItems(anyLong());
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var checkout = pool.submit(() -> service.create(OrderServiceTest.CUSTOMER, OrderServiceTest.dineIn()));
+            try {
+                assertTrue(clearing.await(10, TimeUnit.SECONDS));
+                var addition = pool.submit(() -> {
+                    adding.countDown();
+                    var result = cartService.addToCart(4L, add(5, 2));
+                    added.countDown();
+                    return result;
+                });
+                assertTrue(adding.await(5, TimeUnit.SECONDS));
+                assertFalse(added.await(250, TimeUnit.MILLISECONDS));
+                release.countDown();
+                assertFalse(checkout.get(15, TimeUnit.SECONDS).items().stream().anyMatch(item -> item.foodId() == 5));
+                var remaining = addition.get(15, TimeUnit.SECONDS).getItems();
+                assertEquals(1, remaining.size());
+                assertEquals(5L, remaining.getFirst().getFood().getId());
+                assertEquals(2, remaining.getFirst().getQuantity());
+            } finally {
+                release.countDown();
+            }
+        }
+    }
+
+    private boolean checkoutAfter(CountDownLatch gate, long userId) throws InterruptedException {
+        gate.await();
+        try {
+            service.create(new org.example.shared.api.AuthenticatedUser(Long.toString(userId), org.example.shared.api.Role.CUSTOMER),
+                    OrderServiceTest.dineIn());
+            return true;
+        } catch (OrderFailure error) {
+            assertEquals("INSUFFICIENT_STOCK", error.code());
+            return false;
+        }
+    }
+
+    @Test void jpaCartWriteAndJdbcCheckoutRollBackTogether() {
+        int before = stock(5);
+        long version = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
+        assertThrows(IllegalStateException.class, () -> transactions.execute(() -> {
+            cartService.addToCart(4L, add(5, 2));
+            service.create(OrderServiceTest.CUSTOMER, OrderServiceTest.dineIn());
+            throw new IllegalStateException("rollback JPA and JDBC");
+        }));
+        assertEquals(before, stock(5));
+        assertEquals(version, db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class));
+        assertEquals(3, cartService.getCart(4L).getItems().size());
+        assertEquals(8, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
+        assertTrue(recorder.received.isEmpty());
+    }
+
+    private static AddToCartRequest add(long foodId, int quantity) {
+        var request = new AddToCartRequest();
+        request.setFoodId(foodId);
+        request.setQuantity(quantity);
+        return request;
     }
 
     private int stock(long id) { return db.queryForObject("SELECT stock_quantity FROM foods WHERE id = ?", Integer.class, id); }

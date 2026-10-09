@@ -97,11 +97,11 @@ class OrderWebTest {
         verify(service).updateStatus(new AuthenticatedUser("2", Role.EMPLOYEE), 1001, OrderStatus.SHIPPING);
     }
 
-    @Test void placeholderAndBusinessFailuresHaveExplicitJsonStatus() throws Exception {
-        when(service.create(any(), any())).thenThrow(new OrderFailure("CART_NOT_IMPLEMENTED", "Cart chưa sẵn sàng."));
+    @Test void cartAndBusinessFailuresHaveExplicitJsonStatus() throws Exception {
+        when(service.create(any(), any())).thenThrow(new OrderFailure("EMPTY_CART", "Giỏ hàng đang rỗng."));
         http.perform(post("/api/orders").header("Authorization", "Bearer customer")
                 .contentType("application/json").content("{}"))
-                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("CART_NOT_IMPLEMENTED"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("EMPTY_CART"))
                 .andExpect(header().string("Cache-Control", "no-store"));
         for (var error : List.of(new OrderFailure("FORBIDDEN", "forbidden"),
                 new OrderFailure("ORDER_NOT_FOUND", "missing"), new OrderFailure("INVALID_ORDER_TRANSITION", "conflict"))) {

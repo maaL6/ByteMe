@@ -7,6 +7,10 @@ import org.example.food.controller.FoodController;
 import org.example.food.service.FoodService;
 import org.example.platform.security.LoginRateLimiter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.security.oauth2.jwt.Jwt;
+import java.time.Instant;
+import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -28,12 +32,12 @@ class FoodCartSecurityTest {
     @MockitoBean FoodService foods;
     @MockitoBean CartService cart;
 
-    @Test void developmentFoodAndCartEndpointsRemainAvailable() throws Exception {
+    @Test void developmentFoodRemainsAvailableButCartRequiresAuthProfile() throws Exception {
         http.perform(get("/api/foods")).andExpect(status().isOk());
         http.perform(delete("/api/foods/1")).andExpect(status().isNoContent());
-        http.perform(get("/api/cart").header("X-User-Id", "4")).andExpect(status().isOk());
+        http.perform(get("/api/cart").header("X-User-Id", "4")).andExpect(status().isForbidden());
         verify(foods).deleteFood(1L);
-        verify(cart).getCart(4L);
+        verifyNoInteractions(cart);
     }
 
     @Test void unrelatedEndpointsRemainDenied() throws Exception {
@@ -51,6 +55,43 @@ class AuthFoodCartSecurityTest {
     @MockitoBean CartService cart;
     @MockitoBean JwtDecoder decoder;
     @MockitoBean LoginRateLimiter limiter;
+
+    @BeforeEach void tokens() {
+        for (String role : new String[]{"CUSTOMER", "EMPLOYEE", "ADMIN"}) {
+            when(decoder.decode(role)).thenReturn(Jwt.withTokenValue(role).header("alg", "RS256")
+                    .subject("4").claim("role", role).issuedAt(Instant.now())
+                    .expiresAt(Instant.now().plusSeconds(300)).build());
+        }
+    }
+
+    @Test void cartUsesJwtOwnerAndIgnoresSpoofedHeader() throws Exception {
+        http.perform(get("/api/cart").header("Authorization", "Bearer CUSTOMER").header("X-User-Id", "5"))
+                .andExpect(status().isOk());
+        verify(cart).getCart(4L);
+    }
+
+    @Test void onlyCustomersCanUseAnyCartEndpoint() throws Exception {
+        for (String role : new String[]{"EMPLOYEE", "ADMIN"}) {
+            http.perform(get("/api/cart").header("Authorization", "Bearer " + role)).andExpect(status().isForbidden());
+            http.perform(post("/api/cart/items").header("Authorization", "Bearer " + role)
+                    .contentType("application/json").content("{\"foodId\":1,\"quantity\":1}"))
+                    .andExpect(status().isForbidden());
+            http.perform(put("/api/cart/items/1").header("Authorization", "Bearer " + role)
+                    .contentType("application/json").content("{\"quantity\":1}"))
+                    .andExpect(status().isForbidden());
+            http.perform(delete("/api/cart/items/1").header("Authorization", "Bearer " + role))
+                    .andExpect(status().isForbidden());
+        }
+        verifyNoInteractions(cart);
+    }
+
+    @Test void invalidQuantitiesAndFoodIdsNeverReachCartService() throws Exception {
+        for (String body : new String[]{"{\"foodId\":0,\"quantity\":1}", "{\"foodId\":1,\"quantity\":0}"}) {
+            http.perform(post("/api/cart/items").header("Authorization", "Bearer CUSTOMER")
+                    .contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(cart);
+    }
 
     @Test void menuRemainsPublicWithAuthEnabled() throws Exception {
         http.perform(get("/api/foods")).andExpect(status().isOk());

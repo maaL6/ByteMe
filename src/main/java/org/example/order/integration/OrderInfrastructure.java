@@ -4,7 +4,6 @@ import java.util.function.Supplier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.example.order.service.port.OrderEvents;
 import org.example.order.service.port.UnitOfWork;
@@ -23,9 +22,4 @@ public class OrderInfrastructure implements UnitOfWork, OrderEvents {
     @Override public <T> T execute(Supplier<T> action) { return transactions.execute(status -> action.get()); }
     @Override public void publish(OrderCreated event) { publisher.publishEvent(event); }
 
-    @TransactionalEventListener
-    public void cartPlaceholder(OrderCreated event) {
-        // TODO: Cart event hook when Cart Service is implemented.
-        // clearItems still runs inside checkout, not in this after-commit listener.
-    }
 }

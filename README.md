@@ -7,7 +7,7 @@ Springdoc OpenAPI, JUnit 5 và Testcontainers. Maven 3.9.11 qua Maven Wrapper.
 
 ## Auth opt-in — UC-01/02
 
-Mặc định không bật Auth và không cần khóa RSA; health/Swagger vẫn public, route khác deny-all. Bật profile `auth` để đăng ký/đăng nhập và xác thực JWT tập trung cho các route còn lại; các module cần khai báo thêm route public hoặc quyền role/tài nguyên khi tích hợp. JWT TTL 5400 giây; logout/revocation/rotation chưa triển khai. Quota login in-memory 10/email và 100/IP trong 900 giây.
+Mặc định không bật Auth và không cần khóa RSA; health/Swagger và Food CRUD vẫn mở cho development, Cart/Order bị chặn. Bật profile `auth` để đăng ký/đăng nhập và xác thực JWT; Cart yêu cầu CUSTOMER, Order phân quyền CUSTOMER/EMPLOYEE. JWT TTL 5400 giây; logout/revocation/rotation chưa triển khai. Quota login in-memory 10/email và 100/IP trong 900 giây.
 
 Cần Java 25 và Python 3 với cryptography (baseline dev 50.0.2):
 
@@ -36,3 +36,11 @@ docker compose -f compose.yaml -f compose.auth.yaml up --build
 Giữ nguyên DB/volume của Compose gốc. Chưa có signing/rotation production hoặc NFR Kaggle; khóa/issuer/audience hiện dùng baseline local.
 
 CLI thử nghiệm `LocalTokenCli` nằm trong `src/test/java/org/example/dev/`, script dùng test-compile và target/test-classes; CLI không được đóng gói trong application.jar. Application.main là entry point chạy backend, giữ trong src/main/java.
+
+## Cart → Order
+
+Dùng profile `auth` và JWT đăng nhập thật cho cả Cart và Order; không dùng `X-User-Id`.
+POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/orders`
+với thông tin bàn hoặc giao hàng. Order lấy món/số lượng từ giỏ, chốt giá server,
+lưu đơn PENDING, trừ kho và dọn giỏ trong một transaction. Lỗi sẽ rollback toàn bộ.
+Xem request mẫu và quy tắc tại [Order API](docs/order-api.md).
