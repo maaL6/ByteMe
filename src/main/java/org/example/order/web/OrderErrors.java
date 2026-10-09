@@ -21,7 +21,6 @@ public class OrderErrors {
             case "FORBIDDEN" -> 403;
             case "ORDER_NOT_FOUND", "CART_NOT_FOUND", "FOOD_NOT_FOUND" -> 404;
             case "FOOD_UNAVAILABLE", "INSUFFICIENT_STOCK", "INVALID_ORDER_TRANSITION" -> 409;
-            case "CART_NOT_IMPLEMENTED" -> 503;
             default -> 400;
         };
         return error(request, status, error.code(), error.getMessage());

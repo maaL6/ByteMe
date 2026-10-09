@@ -9,7 +9,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.example.order.domain.*;
-import org.example.order.integration.CartCheckoutPlaceholder;
 import org.example.order.service.*;
 import org.example.order.service.port.*;
 import org.example.shared.api.AuthenticatedUser;
@@ -81,9 +80,9 @@ class OrderServiceTest {
         sequence.verify(events).publish(new OrderEvents.OrderCreated(1010, 4, 8));
     }
 
-    @Test void placeholderFailsExplicitlyAndDoesNotWriteOrders() {
-        when(carts.lockByUserId(4)).thenAnswer(call -> new CartCheckoutPlaceholder().lockByUserId(4));
-        assertCode("CART_NOT_IMPLEMENTED", () -> service.create(CUSTOMER, dineIn()));
+    @Test void missingCartDoesNotWriteOrders() {
+        when(carts.lockByUserId(4)).thenReturn(null);
+        assertCode("CART_NOT_FOUND", () -> service.create(CUSTOMER, dineIn()));
         verifyNoInteractions(orders, foods, events);
     }
 

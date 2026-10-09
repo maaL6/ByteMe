@@ -39,7 +39,7 @@ class ApplicationTests {
     void contextLoads() {
         assertFalse(context.containsBean("authController"));
         assertFalse(context.containsBean("orderController"));
-        org.junit.jupiter.api.Assertions.assertInstanceOf(org.example.order.integration.CartCheckoutPlaceholder.class,
+        org.junit.jupiter.api.Assertions.assertInstanceOf(org.example.cart.integration.MySqlCartCheckout.class,
                 context.getBean(org.example.order.service.port.CartCheckout.class));
         assertFalse(context.containsBean("jwtDecoder"));
         assertFalse(context.containsBean("rsaKey"));

@@ -29,7 +29,7 @@ public class OrderController {
     public OrderController(OrderService service) { this.service = service; }
 
     @PostMapping
-    @Operation(summary = "Tạo đơn từ giỏ hàng (503 khi Cart Service còn là placeholder)")
+    @Operation(summary = "Tạo đơn từ giỏ hàng của khách hàng hiện tại")
     public ResponseEntity<Order> create(@AuthenticationPrincipal AuthenticatedUser user,
             @RequestBody CreateOrderCommand request) {
         var result = service.create(user, request);
