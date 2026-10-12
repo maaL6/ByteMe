@@ -2,7 +2,7 @@ package org.example.platform.security;
 
 import java.nio.charset.StandardCharsets;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.example.auth.service.port.PasswordHasher;
+import org.example.auth.service.PasswordHasher;
 
 /** Raw BCrypt 60 ký tự, tương thích password_hash và seed ByteMe. */
 public final class BCryptPasswordHasher implements PasswordHasher {

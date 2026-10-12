@@ -17,9 +17,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.*;
-import org.example.auth.domain.account.*;
-import org.example.auth.domain.exception.*;
-import org.example.auth.service.port.*;
+import org.example.auth.dto.*;
+import org.example.auth.entity.*;
+import org.example.auth.repository.*;
+import org.example.auth.service.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 

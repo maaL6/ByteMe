@@ -11,7 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.example.platform.security.*;
-import org.example.auth.web.ApiErrors;
+import org.example.auth.controller.ApiErrors;
 import org.example.shared.api.Role;
 import org.example.shared.api.AuthenticatedUser;
 @Configuration

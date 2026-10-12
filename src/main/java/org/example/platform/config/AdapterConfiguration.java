@@ -11,8 +11,9 @@ import org.springframework.context.annotation.*;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.example.auth.dto.*;
+import org.example.auth.repository.AccountRepository;
 import org.example.auth.service.*;
-import org.example.auth.service.port.*;
 import org.example.platform.security.*;
 @Configuration
 public class AdapterConfiguration {
@@ -46,8 +47,6 @@ public class AdapterConfiguration {
             } catch(RuntimeException e) { return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token","JWT không hợp lệ",null)); }
         });return decoder;
     }
-    @Bean RegisterService registerService(AccountRepository repository,PasswordHasher passwords) { return new RegisterService(repository,passwords); }
-    @Bean LoginService loginService(AccountRepository repository,PasswordHasher passwords,TokenIssuer tokens) { return new LoginService(repository,passwords,tokens); }
     @Bean LoginRateLimiter loginRateLimiter(Clock clock,@Value("${auth.login.email-limit}") int email,
          @Value("${auth.login.ip-limit}") int ip,@Value("${auth.login.window-seconds}") long window) {
         return new LoginRateLimiter(clock,email,ip,window);
