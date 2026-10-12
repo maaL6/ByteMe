@@ -9,8 +9,8 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
-import org.example.auth.service.port.AccessToken;
-import org.example.auth.service.port.TokenIssuer;
+import org.example.auth.dto.AccessToken;
+import org.example.auth.service.TokenIssuer;
 import org.example.shared.api.AuthenticatedUser;
 
 /** RS256 cho tích hợp local với mock; chưa chốt chính sách signing production. */

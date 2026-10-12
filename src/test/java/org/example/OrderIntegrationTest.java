@@ -29,10 +29,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.example.order.domain.*;
+import org.example.order.dto.*;
+import org.example.order.entity.*;
+import org.example.order.integration.*;
+import org.example.order.repository.*;
 import org.example.order.service.OrderFailure;
 import org.example.order.service.OrderService;
-import org.example.order.service.port.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -242,7 +244,7 @@ class OrderIntegrationTest {
         cartService.removeCartItem(4L, 2L);
         assertTrue(db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class) > version);
         int before = stock(5);
-        var order = service.create(OrderServiceTest.CUSTOMER, new org.example.order.service.CreateOrderCommand(
+        var order = service.create(OrderServiceTest.CUSTOMER, new org.example.order.dto.CreateOrderCommand(
                 OrderType.DELIVERY, null, "Khách", "0900000004", "Địa chỉ", PaymentMethod.COD, null));
         assertEquals(3, order.items().stream().filter(item -> item.foodId() == 5).findFirst().orElseThrow().quantity());
         assertFalse(order.items().stream().anyMatch(item -> item.foodId() == 2));

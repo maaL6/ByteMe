@@ -1,6 +1,6 @@
 package org.example.cart.integration;
 
-import org.example.order.service.port.CartCheckout;
+import org.example.order.integration.CartCheckout;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

@@ -5,10 +5,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.example.order.service.port.OrderEvents;
-import org.example.order.service.port.UnitOfWork;
 
-/** Spring details stay here so OrderService remains plain Java. */
 @Component
 public class OrderInfrastructure implements UnitOfWork, OrderEvents {
     private final TransactionTemplate transactions;
@@ -21,5 +18,4 @@ public class OrderInfrastructure implements UnitOfWork, OrderEvents {
 
     @Override public <T> T execute(Supplier<T> action) { return transactions.execute(status -> action.get()); }
     @Override public void publish(OrderCreated event) { publisher.publishEvent(event); }
-
 }

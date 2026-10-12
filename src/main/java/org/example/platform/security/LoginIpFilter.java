@@ -5,7 +5,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.example.auth.web.ApiErrors;
+import org.example.auth.controller.ApiErrors;
 public final class LoginIpFilter extends OncePerRequestFilter {
     private final LoginRateLimiter limiter;private final ObjectMapper json;
     public LoginIpFilter(LoginRateLimiter limiter,ObjectMapper json) { this.limiter=limiter;this.json=json; }
