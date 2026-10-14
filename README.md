@@ -18,7 +18,7 @@ python3 -m venv .venv
 DB_URL=jdbc:mysql://localhost:3306/starter DB_USERNAME=starter DB_PASSWORD=local-development-only ./mvnw spring-boot:run
 ```
 
-Lệnh ví dụ dùng database/user `starter` local. Cấu hình kết nối luôn đến từ `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; với môi trường ngoài local, truyền credentials riêng qua biến môi trường. `POST /api/auth/register` nhận fullName/email/phone/password/confirmPassword, trả 201 CUSTOMER/ACTIVE. `POST /api/auth/token` nhận email/password, trả accessToken/tokenType/expiresIn/user. JSON strict và lỗi Auth chỉ áp dụng AuthController. OpenAPI Auth tại `/openapi/openapi.yaml`; Swagger tổng vẫn dùng `/v3/api-docs`.
+Lệnh ví dụ dùng database/user `starter` local. Cấu hình kết nối luôn đến từ `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; với môi trường ngoài local, truyền credentials riêng qua biến môi trường. `POST /api/auth/register` nhận fullName/email/phone/password/confirmPassword, trả 201 CUSTOMER/ACTIVE. `POST /api/auth/token` nhận email/password, trả accessToken/tokenType/expiresIn/user. JSON strict và lỗi Auth chỉ áp dụng AuthController. OpenAPI thống nhất tại `/openapi.yaml`; Swagger UI tại `/swagger-ui/index.html` được cấu hình để đọc specification này thay vì tài liệu sinh tự động `/v3/api-docs`.
 
 ```sh
 ./mvnw test

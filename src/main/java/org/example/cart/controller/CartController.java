@@ -10,7 +10,6 @@ import org.example.shared.api.AuthenticatedUser;
 import org.example.shared.api.Role;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.server.ResponseStatusException;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "bearerAuth")
 public class CartController {
 
     private final CartService cartService;

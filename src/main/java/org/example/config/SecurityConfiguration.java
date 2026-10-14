@@ -24,7 +24,7 @@ public class SecurityConfiguration {
     }
     @Bean @Order(2) SecurityFilterChain protectedApi(HttpSecurity http,ObjectMapper json) throws Exception {
         return http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-          .authorizeHttpRequests(auth->auth.requestMatchers("/docs/**","/docs","/openapi/**","/swagger-ui.html","/swagger-ui/**","/v3/api-docs", "/v3/api-docs/**", "/actuator/health", "/actuator/health/**").permitAll()
+          .authorizeHttpRequests(auth->auth.requestMatchers("/openapi.yaml","/swagger-ui.html","/swagger-ui/**", "/v3/api-docs/swagger-config", "/actuator/health", "/actuator/health/**").permitAll()
               .requestMatchers(HttpMethod.GET, "/api/foods", "/api/foods/**").permitAll()
               .requestMatchers("/api/cart", "/api/cart/**").hasRole("CUSTOMER")
               .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("CUSTOMER")
