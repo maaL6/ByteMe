@@ -33,3 +33,8 @@ management:
   endpoint:
     health:
       show-details: never
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /openapi.yaml
+    disable-swagger-default-url: true
