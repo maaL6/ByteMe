@@ -52,6 +52,22 @@ class FoodCartSecurityTest {
         verify(foods).getActiveFoods(null);
     }
 
+    @Test void onlyAdminCanWriteFoods() throws Exception {
+        String body = "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"stockQuantity\":10}";
+        for (String role : new String[]{"CUSTOMER", "EMPLOYEE"}) {
+            http.perform(post("/api/foods").header("Authorization", "Bearer " + role)
+                    .contentType("application/json").content(body)).andExpect(status().isForbidden());
+            http.perform(put("/api/foods/1").header("Authorization", "Bearer " + role)
+                    .contentType("application/json").content(body)).andExpect(status().isForbidden());
+            http.perform(delete("/api/foods/1").header("Authorization", "Bearer " + role))
+                    .andExpect(status().isForbidden());
+        }
+        verifyNoInteractions(foods);
+        http.perform(delete("/api/foods/1").header("Authorization", "Bearer ADMIN"))
+                .andExpect(status().isNoContent());
+        verify(foods).deleteFood(1L);
+    }
+
     @Test void cartUsesJwtOwnerAndIgnoresSpoofedOwnerHeader() throws Exception {
         http.perform(get("/api/cart").header("X-User-Id", "4")).andExpect(status().isUnauthorized());
         http.perform(get("/api/cart").header("Authorization", "Bearer CUSTOMER")
