@@ -98,9 +98,7 @@ paths:
       tags: [Food]
       operationId: createFood
       summary: Thêm món ăn
-      description: >-
-        Tài liệu nghiệp vụ quy định ADMIN, nhưng implementation hiện tại chấp
-        nhận mọi JWT hợp lệ. Đặc tả giữ nguyên hành vi đang chạy để phục vụ kiểm thử.
+      description: Chỉ ADMIN.
       security:
         - bearerAuth: []
       requestBody:
@@ -112,6 +110,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -166,9 +166,7 @@ paths:
       tags: [Food]
       operationId: updateFood
       summary: Cập nhật món ăn
-      description: >-
-        Tài liệu nghiệp vụ quy định ADMIN, nhưng implementation hiện tại chấp
-        nhận mọi JWT hợp lệ. Đặc tả giữ nguyên hành vi đang chạy để phục vụ kiểm thử.
+      description: Chỉ ADMIN.
       security:
         - bearerAuth: []
       requestBody:
@@ -180,6 +178,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -193,8 +193,7 @@ paths:
       operationId: deactivateFood
       summary: Ngừng bán món ăn
       description: >-
-        Soft delete bằng trạng thái INACTIVE. Tài liệu nghiệp vụ quy định ADMIN,
-        nhưng implementation hiện tại chấp nhận mọi JWT hợp lệ.
+        Soft delete bằng trạng thái INACTIVE. Chỉ ADMIN.
       security:
         - bearerAuth: []
       responses:
@@ -204,6 +203,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
