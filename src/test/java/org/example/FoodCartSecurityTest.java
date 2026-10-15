@@ -9,6 +9,8 @@ import org.example.food.service.FoodService;
 import org.example.platform.security.LoginRateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -22,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({FoodController.class, CartController.class})
@@ -96,5 +99,17 @@ class FoodCartSecurityTest {
                     .contentType("application/json").content(body)).andExpect(status().isBadRequest());
         }
         verifyNoInteractions(cart);
+    }
+
+    @Test void foodAndCartErrorsUseTheSharedErrorBody() throws Exception {
+        when(foods.getFoodById(999L)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Food not found"));
+        http.perform(get("/api/foods/999")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND")).andExpect(jsonPath("$.path").value("/api/foods/999"));
+        http.perform(get("/api/foods/search")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        http.perform(post("/api/cart/items").header("Authorization", "Bearer CUSTOMER")
+                .contentType("application/json").content("{\"foodId\":0,\"quantity\":1}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("foodId"));
     }
 }

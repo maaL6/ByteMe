@@ -1,4 +1,6 @@
 package org.example.auth.service;
+
+import org.example.common.ApiError;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +28,6 @@ public final class AuthValidation {
            || value.getBytes(StandardCharsets.UTF_8).length>72) invalid(field,"Độ dài password không hợp lệ.");
     }
     public static void invalid(String field,String message) {
-        throw new AuthFailure("VALIDATION_ERROR","Dữ liệu đầu vào không hợp lệ.",List.of(new AuthFailure.FieldError(field,message)));
+        throw new AuthFailure("VALIDATION_ERROR","Dữ liệu đầu vào không hợp lệ.",List.of(new ApiError.FieldError(field,message)));
     }
 }
