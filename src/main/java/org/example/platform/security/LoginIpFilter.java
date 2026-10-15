@@ -1,11 +1,10 @@
 package org.example.platform.security;
 import java.io.IOException;
-import java.util.List;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.example.auth.controller.ApiErrors;
+import org.example.common.ApiError;
 public final class LoginIpFilter extends OncePerRequestFilter {
     private final LoginRateLimiter limiter;private final ObjectMapper json;
     public LoginIpFilter(LoginRateLimiter limiter,ObjectMapper json) { this.limiter=limiter;this.json=json; }
@@ -16,7 +15,7 @@ public final class LoginIpFilter extends OncePerRequestFilter {
         try { limiter.ip(r.getRemoteAddr()); }
         catch(LoginRateLimiter.LimitExceeded e) {
             s.setStatus(429);s.setContentType("application/json");s.setHeader("Retry-After",Long.toString(e.retryAfter()));s.setHeader("Cache-Control","no-store");
-            json.writeValue(s.getOutputStream(),new ApiErrors.Body(429,"LOGIN_RATE_LIMITED","Vượt giới hạn đăng nhập.",r.getRequestURI(),List.of()));return;
+            json.writeValue(s.getOutputStream(),new ApiError(429,"LOGIN_RATE_LIMITED","Vượt giới hạn đăng nhập.",r.getRequestURI()));return;
         }
         chain.doFilter(r,s);
     }

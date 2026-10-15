@@ -128,14 +128,15 @@ class AuthIntegrationTest {
         @org.springframework.web.bind.annotation.GetMapping("/scope-check/error")
         String fail() { throw new IllegalStateException("synthetic module error"); }
     }
-    @Test void strictJsonAndErrorAdviceAreLimitedToAuth() throws Exception {
+    @Test void strictJsonIsLimitedToAuthButErrorBodyIsShared() throws Exception {
         String token=tokens.issue(new org.example.shared.api.AuthenticatedUser("scope-user",
                 org.example.shared.api.Role.CUSTOMER)).value();
         assertEquals(200,http.perform(post("/scope-check/echo").header("Authorization","Bearer "+token)
                 .contentType("application/json").content("{\"value\":123,\"extra\":true}"))
                 .andReturn().getResponse().getStatus());
-        assertThrows(jakarta.servlet.ServletException.class,()->http.perform(get("/scope-check/error")
-                .header("Authorization","Bearer "+token)));
+        var failed=http.perform(get("/scope-check/error").header("Authorization","Bearer "+token)).andReturn().getResponse();
+        assertEquals(500,failed.getStatus());
+        assertEquals("INTERNAL_ERROR",json.readTree(failed.getContentAsString()).path("code").asText());
         assertEquals(400,http.perform(post("/api/auth/token").contentType("application/json")
                 .content("{\"email\":\"valid@scope.example\",\"password\":\"x\"} {}"))
                 .andReturn().getResponse().getStatus());

@@ -631,7 +631,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
     Unauthorized:
       description: Thiếu Bearer JWT, JWT không hợp lệ hoặc credentials sai.
       headers:
@@ -643,31 +643,31 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
     Forbidden:
       description: Tài khoản không hoạt động, sai role hoặc không sở hữu tài nguyên.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
     NotFound:
       description: Không tìm thấy cart, item, food, category hoặc order tương ứng.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
     Conflict:
       description: Trùng dữ liệu, món ngừng bán, thiếu tồn kho hoặc chuyển trạng thái không hợp lệ.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
     UnsupportedMediaType:
       description: Request body không dùng application/json.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
     TooManyRequests:
       description: Vượt giới hạn đăng nhập theo email hoặc IP.
       headers:
@@ -685,7 +685,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ApiError'
   headers:
     NoStore:
       description: Không cache response nhạy cảm.
@@ -1050,24 +1050,3 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FieldError'
-    SpringError:
-      type: object
-      required: [status, error, path]
-      properties:
-        timestamp:
-          type: string
-          format: date-time
-        status:
-          type: integer
-          minimum: 400
-          maximum: 599
-        error:
-          type: string
-        message:
-          type: string
-        path:
-          type: string
-    ErrorResponse:
-      oneOf:
-        - $ref: '#/components/schemas/ApiError'
-        - $ref: '#/components/schemas/SpringError'
