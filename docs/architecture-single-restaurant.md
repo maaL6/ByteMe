@@ -1,66 +1,77 @@
 # ByteMe — Kiến trúc và checkout cho một nhà hàng
 
-Đây là bản sơ đồ hiện hành sau khi chốt phạm vi một nhà hàng, có ăn tại chỗ (`DINE_IN`) và giao về nhà (`DELIVERY`). [Use case UC01–UC18](Project%20KTPM.md) xác định yêu cầu nghiệp vụ; [thiết kế database](database-design.md) xác định bảng và ràng buộc. Hai ảnh `2. architecture.png` và `2. sequence diagram.png` được giữ làm bản tham khảo ban đầu.
+Tài liệu mô tả kiến trúc **đúng với code hiện tại** cho một nhà hàng, gồm ăn tại chỗ (`DINE_IN`) và giao về nhà (`DELIVERY`). [Use case UC01–UC18](Project%20KTPM.md) xác định yêu cầu nghiệp vụ; [thiết kế database](database-design.md) xác định bảng và ràng buộc; [README](../README.md) tóm tắt kiến trúc và API. Hai ảnh `2. architecture.png` và `2. sequence diagram.png` là bản phác thảo ban đầu; các điểm khác biệt được liệt kê ngay dưới đây.
 
-## Rà soát hai sơ đồ ban đầu
+## Khác biệt so với hai sơ đồ ban đầu
 
-| Nội dung trong bản cũ | Điều chỉnh và lý do |
+| Nội dung trong bản phác thảo | Code hiện tại và lý do |
 | --- | --- |
-| Bốn module Authentication, Food, Cart, Order | Giữ nguyên, tương ứng UC01–02, UC03–08, UC09–12, UC13–18. Một nhà hàng không cần module hay bảng `restaurants`. |
-| Kiến trúc dùng Spring ApplicationEvent Bus để xóa giỏ bất đồng bộ, sequence lại gọi `clearCart` đồng bộ | Chọn checkout đồng bộ trong một giao dịch: tạo đơn/chi tiết, trừ tồn kho và dọn giỏ cùng commit. Xóa giỏ bất đồng bộ có thể khiến đơn thành công nhưng giỏ chưa xóa hoặc xóa nhầm những món khách vừa thêm. |
-| Spring Boot bao quanh cả core và các service | Spring là adapter ở tầng web/persistence. Use case và domain là Java thuần, chỉ phụ thuộc contract Repository/UnitOfWork; không import Spring, JPA hay JDBC. Điều này giữ nghiệp vụ độc lập framework theo yêu cầu KTPM. |
-| `CartService` gửi SQL trực tiếp tới database trong sequence | Mọi đọc/ghi đi qua Repository port và persistence adapter. SQL chỉ có trong adapter. |
-| `DELETE FROM cart_items WHERE user_id = ...` | `cart_items` thuộc `carts` qua `cart_id`, không có `user_id`. Xác định cartId từ người dùng đã xác thực rồi gọi `CartRepository.clearItems(cartId)`; adapter xóa theo `cart_id`. |
-| Sequence chỉ kiểm tra trạng thái món, không thể hiện khóa/trừ tồn kho hay rollback | Thêm khóa giỏ và khóa món theo foodId tăng dần, kiểm tra tồn kho và rollback mọi thay đổi khi lỗi. Các thao tác sửa giỏ cũng phải khóa cùng hàng `carts`; thao tác sửa tồn kho dùng cùng cơ chế khóa hàng `foods`. |
-| Đơn không thể hiện hình thức phục vụ | UC13 và sequence tách kiểm tra/snapshot bàn cho DINE_IN, người nhận/SĐT/địa chỉ cho DELIVERY. |
-| Database ghi `PostgreSQL / MySQL` | Chọn MySQL theo cấu hình và schema SQL của project. |
+| Bốn module Authentication, Food, Cart, Order | Giữ nguyên: `auth` (UC01–02), `food` (UC03–08), `cart` (UC09–12), `order` (UC13–18). Một nhà hàng nên không có bảng `restaurants`. |
+| Spring ApplicationEvent Bus xóa giỏ bất đồng bộ sau `OrderCreated` | Không dùng event. Checkout đồng bộ trong **một transaction**: tạo đơn, trừ kho, dọn giỏ cùng commit. Xóa giỏ bất đồng bộ có thể để đơn đã tạo mà giỏ chưa dọn, hoặc xóa nhầm món khách vừa thêm. |
+| `OrderService` chỉ gọi `OrderRepository` | `OrderService` gọi thêm `CartService` (khóa/dọn giỏ) và `FoodService` (khóa món, trừ/hoàn kho). Module chỉ gọi nhau qua **service**, không dùng repository/entity của nhau. |
+| `CartService` gửi SQL trực tiếp | Mọi truy cập dữ liệu đi qua Spring Data JPA repository của chính module đó. |
+| `DELETE FROM cart_items WHERE user_id = ...` | `cart_items` không có `user_id`; `CartService.clearCart(userId)` khóa giỏ của user rồi xóa item của giỏ đó (theo `cart_id`). |
+| Sequence không có khóa, trừ kho hay rollback | Khóa giỏ (`SELECT … FOR UPDATE`), khóa từng món theo `foodId` tăng dần, kiểm tra tồn kho, trừ kho; lỗi ở bất kỳ bước nào rollback toàn bộ. |
+| Đơn không thể hiện hình thức phục vụ | DINE_IN lưu `tableNumber`; DELIVERY lưu người nhận/SĐT/địa chỉ. |
+| Database `PostgreSQL / MySQL` | MySQL 8.4 theo `src/main/resources/db/schema.sql`. |
 
-Đây là thiết kế cho phần nghiệp vụ cần triển khai. Các controller/service/repository trong sơ đồ không đồng nghĩa rằng toàn bộ API đã được code trong starter.
+## Phân tầng chung
+
+Mọi module dùng cùng một kiểu phân tầng; quy tắc được `src/test/java/org/example/ArchitectureTest.java` (ArchUnit) kiểm tra tự động.
+
+| Tầng | Package | Trách nhiệm | Được phép phụ thuộc |
+| --- | --- | --- | --- |
+| Bảo mật | `config.SecurityConfiguration`, `platform.security` | Xác thực JWT, phân quyền endpoint theo vai trò, giới hạn đăng nhập | Spring Security |
+| API | `<module>.controller`, `<module>.dto` | Nhận/trả JSON, `@Valid` cho dữ liệu đơn giản (Food/Cart), lấy user từ JWT (`CurrentUser.id`) | Service, DTO, enum của module, `shared.api`, Spring Web |
+| Nghiệp vụ | `<module>.service` | Quy tắc nghiệp vụ (Order kiểm tra cả dữ liệu tạo đơn ở đây vì quy tắc phụ thuộc DINE_IN/DELIVERY), ranh giới transaction (`@Transactional`), ném `BusinessException` | Repository/entity của chính module, service/dto của module khác. **Không** import Spring Web/HTTP, Servlet, Spring Data, JDBC, JPA, Hibernate |
+| Truy cập dữ liệu | `<module>.repository`, `<module>.entity` | Spring Data JPA, khóa hàng (`@Lock(PESSIMISTIC_WRITE)`), khóa lạc quan (`@Version`) | JPA/Hibernate, MySQL |
+| Dùng chung | `common`, `shared.api` | `BusinessException`, `CurrentUser`, `ApiError`, `GlobalErrors`; `AuthenticatedUser`, `Role` | — |
+
+Lỗi nghiệp vụ: service ném `BusinessException(type, code, message)`; `GlobalErrors` đổi `INVALID/FORBIDDEN/NOT_FOUND/CONFLICT` thành 400/403/404/409 với body `{status, code, message, path, fieldErrors}`. Auth giữ handler riêng `AuthErrors` cho `AuthFailure`.
 
 ## Sơ đồ kiến trúc
 
 ```mermaid
 flowchart TB
-    Client["Ứng dụng khách / API Tester"]
-    Security["Web adapter: JWT filter + kiểm tra quyền"]
-    Docs["OpenAPI / Swagger UI"]
+    Client["Ứng dụng khách / API Tester / k6"]
+    Docs["/openapi.yaml + Swagger UI"]
     Client -->|"HTTP / JSON"| Security
-    Docs -.-> Security
+    Docs -.-> Client
 
-    subgraph App["Một ứng dụng — Modular Monolith"]
+    Security["Spring Security filter chain<br/>JWT RS256 + phân quyền theo vai trò<br/>LoginIpFilter cho /api/auth/token"]
+
+    subgraph App["Một ứng dụng Spring Boot — Modular Monolith"]
         direction TB
-        subgraph Auth["Authentication — UC01–UC02"]
-            AuthAPI["Auth Controller / DTO"]
-            AuthCore["Auth use case + domain"]
-            AuthPorts["UserRepository / PasswordHasher / TokenIssuer ports"]
-            AuthAPI --> AuthCore --> AuthPorts
+        subgraph Auth["auth — UC01–UC02"]
+            AuthAPI["AuthController"]
+            AuthCore["RegisterService / LoginService"]
+            AuthRepo["AccountRepository → MySqlAccountRepository → UserRepository (JPA)"]
+            AuthAPI --> AuthCore --> AuthRepo
         end
-        subgraph Food["Food — UC03–UC08"]
-            FoodAPI["Food Controller / DTO"]
-            FoodCore["Food use case + domain"]
-            FoodPorts["FoodRepository / CategoryRepository ports"]
-            FoodAPI --> FoodCore --> FoodPorts
+        subgraph Food["food — UC03–UC08"]
+            FoodAPI["FoodController"]
+            FoodCore["FoodService"]
+            FoodRepo["FoodRepository / CategoryRepository (JPA)"]
+            FoodAPI --> FoodCore --> FoodRepo
         end
-        subgraph Cart["Cart — UC09–UC12"]
-            CartAPI["Cart Controller / DTO"]
-            CartCore["Cart use case + domain"]
-            CartPorts["CartRepository port"]
-            CartAPI --> CartCore --> CartPorts
+        subgraph Cart["cart — UC09–UC12"]
+            CartAPI["CartController"]
+            CartCore["CartService"]
+            CartRepo["CartRepository (JPA)"]
+            CartAPI --> CartCore --> CartRepo
         end
-        subgraph Order["Order — UC13–UC18"]
-            OrderAPI["Order Controller / DTO"]
-            OrderCore["Order use case + domain: DINE_IN / DELIVERY"]
-            OrderPorts["OrderRepository port"]
-            OrderAPI --> OrderCore --> OrderPorts
+        subgraph Order["order — UC13–UC18"]
+            OrderAPI["OrderController"]
+            OrderCore["OrderService"]
+            OrderRepo["OrderRepository (JPA)"]
+            OrderAPI --> OrderCore --> OrderRepo
         end
-        UOW["UnitOfWork port — giao dịch đồng bộ"]
-        AuthCore --> UOW
-        FoodCore --> UOW
-        CartCore --> UOW
-        OrderCore --> UOW
-        OrderCore -->|"hợp đồng lấy/khóa giỏ và dọn giỏ"| CartPorts
-        OrderCore -->|"hợp đồng khóa món và cập nhật tồn kho"| FoodPorts
-        CartCore -->|"hợp đồng đọc món"| FoodPorts
+        Platform["platform: BCryptPasswordHasher, LocalRsaTokenIssuer, LoginRateLimiter"]
+        Common["common: BusinessException, GlobalErrors, CurrentUser"]
+        AuthCore -.->|"PasswordHasher / TokenIssuer"| Platform
+        CartCore -->|"getAvailableFood, findByIds"| FoodCore
+        OrderCore -->|"lockItemsForCheckout, clearCart"| CartCore
+        OrderCore -->|"reserveStock, releaseStock"| FoodCore
     end
 
     Security -->|"/api/auth/*"| AuthAPI
@@ -68,25 +79,20 @@ flowchart TB
     Security -->|"/api/cart/*"| CartAPI
     Security -->|"/api/orders/*"| OrderAPI
 
-    subgraph Infra["Infrastructure adapters — phụ thuộc contract của core"]
-        Persistence["Repository implementations: SQL / JDBC / JPA"]
-        Transaction["UnitOfWork implementation: begin / commit / rollback"]
-        Crypto["BCrypt / JWT implementations"]
-    end
-    Persistence -.->|"implements"| AuthPorts
-    Persistence -.->|"implements"| FoodPorts
-    Persistence -.->|"implements"| CartPorts
-    Persistence -.->|"implements"| OrderPorts
-    Transaction -.->|"implements"| UOW
-    Crypto -.->|"implements"| AuthPorts
-    DB[("MySQL: users, categories, foods, carts, cart_items, orders, order_items")]
-    Persistence --> DB
-    Transaction --> DB
+    DB[("MySQL 8.4: users, categories, foods, carts, cart_items, orders, order_items + view order_totals")]
+    AuthRepo --> DB
+    FoodRepo --> DB
+    CartRepo --> DB
+    OrderRepo --> DB
 ```
 
-Các mũi tên nét liền bên trong module thể hiện lời gọi qua contract. Mũi tên `implements` thể hiện adapter triển khai interface do core định nghĩa. Core không biết kiểu connection hay thư viện persistence; composition root ghép các implementation và bảo đảm các repository dùng cùng giao dịch khi chạy một checkout. Authentication có các port khác nhau cho truy cập user, băm mật khẩu và cấp token; node trong hình gom chúng để sơ đồ dễ đọc.
+Mũi tên giữa các service là lời gọi Java trực tiếp. Các method được gọi đều là `@Transactional` với propagation mặc định (`REQUIRED`), nên khi `OrderService` gọi `CartService`/`FoodService` thì tất cả tham gia **cùng một transaction** và các khóa hàng được giữ đến khi commit hoặc rollback.
 
-Trong giai đoạn 1, đồng bộ checkout qua các port của module, không dùng event bus bất đồng bộ. `UnitOfWork` cung cấp ranh giới giao dịch mà không buộc service nghiệp vụ phải gắn `@Transactional` hoặc import framework. Khi test business logic, thay Repository/UnitOfWork bằng test double để chạy độc lập hạ tầng.
+Ranh giới giữa module:
+
+- `CartItem` chỉ lưu `foodId`; Cart lấy thông tin món để hiển thị qua `FoodService.findByIds` và kiểm tra món còn bán qua `FoodService.getAvailableFood`.
+- `OrderItem` chỉ lưu `foodId` cùng snapshot `foodName`/`unitPrice`; Order không dùng entity `Food`.
+- Không module nào dùng `entity`/`repository`/`controller` của Food, Cart, Order từ bên ngoài module đó.
 
 ## Sequence UC13 — Tạo đơn hàng
 
@@ -94,98 +100,113 @@ Trong giai đoạn 1, đồng bộ checkout qua các port của module, không d
 sequenceDiagram
     autonumber
     actor Customer as Khách hàng
-    participant JWT as Web adapter / JWT
-    participant API as Order Controller
-    participant Service as CreateOrder use case
-    participant UOW as UnitOfWork adapter
-    participant Cart as CartRepository adapter
-    participant Food as FoodRepository adapter
-    participant Order as OrderRepository adapter
+    participant Sec as Security filter (JWT)
+    participant API as OrderController
+    participant Order as OrderService
+    participant Cart as CartService
+    participant Food as FoodService
+    participant Repo as OrderRepository
     participant DB as MySQL
 
-    Customer->>JWT: POST /api/orders + Bearer JWT + orderType
-    JWT->>JWT: Xác thực token và quyền CUSTOMER
-    alt Token không hợp lệ hoặc hết hạn
-        JWT-->>Customer: 401 Unauthorized
-    else Vai trò không có quyền đặt món
-        JWT-->>Customer: 403 Forbidden
-    else Khách hàng hợp lệ
-        JWT->>API: userId từ JWT + request
-        API->>Service: createOrder(userId, request)
-        Service->>Service: Kiểm tra orderType và paymentMethod
-        alt DINE_IN
-            Service->>Service: tableNumber bắt buộc, tối đa 20 ký tự; không có trường giao hàng
-        else DELIVERY
-            Service->>Service: Người nhận / SĐT / địa chỉ bắt buộc; không có tableNumber
-        end
-        alt Thông tin phục vụ / thanh toán không hợp lệ
-            Service-->>API: Validation error
-            API-->>Customer: 400 Bad Request
-        else Thông tin hợp lệ
-            Service->>UOW: begin()
-            UOW->>DB: BEGIN
-            Service->>Cart: lockCartByUserId(userId) và lấy Cart Item
-            Cart->>DB: SELECT carts FOR UPDATE; đọc cart_items theo cart_id
-            DB-->>Cart: Cart và các item
-            Cart-->>Service: Cart snapshot
-            alt Giỏ không tồn tại hoặc rỗng
-                Service->>UOW: rollback()
-                UOW->>DB: ROLLBACK
-                Service-->>API: Business error
-                API-->>Customer: 400 giỏ rỗng / 404 giỏ không tồn tại
-            else Giỏ có món
-                Service->>Food: lockFoods(foodIds theo thứ tự tăng dần)
-                Food->>DB: SELECT foods FOR UPDATE theo foodId
-                DB-->>Food: Giá, trạng thái và tồn kho hiện tại
-                Food-->>Service: Các món đã khóa
-                Service->>Service: Kiểm tra món tồn tại, ACTIVE, số lượng và tồn kho
-                alt Món / số lượng không hợp lệ
-                    Service->>UOW: rollback()
-                    UOW->>DB: ROLLBACK
-                    Service-->>API: Business error
-                    API-->>Customer: 400 / 404 / 409 theo nguyên nhân
-                else Đủ điều kiện đặt
-                    Service->>Service: Tính tổng tiền; snapshot tên và giá món
-                    alt DINE_IN
-                        Service->>Service: Snapshot tableNumber; trường giao hàng null
-                    else DELIVERY
-                        Service->>Service: Snapshot thông tin nhận hàng; tableNumber null
+    Customer->>Sec: POST /api/orders + Bearer JWT
+    Sec->>Sec: Kiểm tra chữ ký, hạn, issuer/audience và role CUSTOMER
+    alt Token thiếu/sai/hết hạn
+        Sec-->>Customer: 401 UNAUTHENTICATED
+    else Không phải CUSTOMER
+        Sec-->>Customer: 403 FORBIDDEN
+    else Hợp lệ
+        Sec->>API: AuthenticatedUser(userId, role)
+        API->>API: CurrentUser.id(user) — subject phải là ID số (nếu không: 403)
+        API->>Order: create(customerId, request) — @Transactional bắt đầu
+        Order->>Order: validate: orderType, paymentMethod, DINE_IN/DELIVERY, độ dài trường
+        alt Dữ liệu không hợp lệ
+            Order-->>Customer: 400 VALIDATION_ERROR (chưa có truy vấn DB nào)
+        else Hợp lệ
+            Order->>Cart: lockItemsForCheckout(customerId)
+            Cart->>DB: SELECT carts WHERE user_id = ? FOR UPDATE, rồi đọc cart_items
+            alt Không có giỏ
+                Cart-->>Customer: 404 CART_NOT_FOUND (rollback)
+            else Có giỏ
+                Cart-->>Order: foodId → quantity, sắp theo foodId tăng dần
+                alt Giỏ rỗng
+                    Order-->>Customer: 400 EMPTY_CART (rollback)
+                else Có món
+                    loop Mỗi món theo foodId tăng dần
+                        Order->>Food: reserveStock(foodId, quantity)
+                        Food->>DB: SELECT foods WHERE id = ? FOR UPDATE
+                        alt Không có món / ngừng bán / thiếu kho
+                            Food-->>Customer: 404 FOOD_NOT_FOUND / 409 FOOD_UNAVAILABLE / 409 INSUFFICIENT_STOCK (rollback toàn bộ)
+                        else Đủ điều kiện
+                            Food->>Food: giảm stockQuantity (ghi xuống DB khi flush)
+                            Food-->>Order: tên + giá hiện tại (snapshot)
+                        end
                     end
-                    Service->>Order: saveOrderAndItems(status=PENDING)
-                    Order->>DB: INSERT orders và order_items
-                    Service->>Food: decreaseStock(foods, quantities)
-                    Food->>DB: UPDATE foods.stock_quantity
-                    Service->>Cart: clearItems(cartId)
-                    Cart->>DB: DELETE cart_items WHERE cart_id = ?
-                    alt Mọi ghi dữ liệu thành công
-                        Service->>UOW: commit()
-                        UOW->>DB: COMMIT
-                        Service-->>API: Order result với snapshot đã lưu
-                        API-->>Customer: 201 Created + orderType + chi tiết đơn
-                    else Có lỗi persistence trước commit
-                        Service->>UOW: rollback()
-                        UOW->>DB: ROLLBACK
-                        Service-->>API: Persistence error
-                        API-->>Customer: 500 Internal Server Error
-                    end
+                    Order->>Repo: save(Order PENDING + OrderItem snapshot)
+                    Repo->>DB: INSERT orders, order_items
+                    Order->>Cart: clearCart(customerId)
+                    Cart->>DB: flush: UPDATE foods (stock, version + 1), DELETE cart_items, UPDATE carts (version + 1)
+                    Order->>DB: COMMIT
+                    Order-->>API: OrderDto (items, totalAmount)
+                    API-->>Customer: 201 Created + Location /api/orders/{id}
                 end
             end
         end
     end
 ```
 
-Bất kỳ lỗi repository nào trong giao dịch, kể cả lúc đọc/khóa giỏ hoặc món, đều phải rollback trước khi trả lỗi. Sequence gom nhánh lỗi persistence ở cuối để tránh lặp hình. Khi giỏ không tồn tại/rỗng, use case dừng kiểm tra và rollback ngay; không cần truy vấn khóa món. Toàn bộ Cart Item được đọc từ server, giá và tổng tiền do server tính. Lock phải được giữ đến commit/rollback; các repository dùng cùng context giao dịch.
+Giá và tổng tiền do server tính từ dữ liệu món đã khóa; client không gửi danh sách món, giá hay `userId`. Tổng tiền không lưu trên `orders` mà tính từ `order_items` (API dùng `OrderDto.totalAmount`, database có view `order_totals`). Mọi lỗi trong transaction, kể cả lỗi hệ thống (500), đều rollback trước khi trả về.
+
+Tính đúng khi chạy đồng thời:
+
+- Hai checkout cùng một giỏ: request sau chờ khóa `carts`, sau đó đọc thấy giỏ đã rỗng và nhận `400 EMPTY_CART`; chỉ một đơn được tạo.
+- Hai khách mua món cuối cùng: cả hai khóa cùng hàng `foods`; người sau đọc tồn kho mới nhất và nhận `409 INSUFFICIENT_STOCK`; không bán vượt kho.
+- Khách thêm món trong lúc checkout: `CartService.addToCart` phải chờ khóa `carts`; món thêm vào nằm trong giỏ mới, không lọt vào đơn đang tạo.
+- Admin sửa món trong lúc checkout: `Food` có `@Version`; bên ghi sau bị từ chối với `409 CONFLICT` thay vì ghi đè tồn kho.
+- Thứ tự khóa luôn là giỏ (hoặc đơn) trước, rồi các món theo `foodId` tăng dần, nên các luồng không khóa chéo nhau.
+
+## Sequence hủy đơn (UC15, UC17)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Khách / Nhân viên
+    participant API as OrderController
+    participant Order as OrderService
+    participant Food as FoodService
+    participant DB as MySQL
+
+    User->>API: DELETE /api/orders/{id} (CUSTOMER) hoặc PUT status CANCELLED (EMPLOYEE)
+    API->>Order: cancel(customerId, id) / updateStatus(employeeId, id, CANCELLED)
+    Order->>DB: SELECT orders WHERE id = ? FOR UPDATE
+    Order->>Order: Kiểm tra tồn tại (404), chủ đơn với khách (403), bước chuyển hợp lệ (409)
+    loop Mỗi dòng đơn theo foodId tăng dần
+        Order->>Food: releaseStock(foodId, quantity)
+        Food->>DB: SELECT foods WHERE id = ? FOR UPDATE, rồi tăng stock
+    end
+    Order->>DB: COMMIT (UPDATE foods, UPDATE orders status = CANCELLED, cancelled_at, updated_at)
+    Order-->>User: 200 + đơn sau khi hủy (giữ đơn và chi tiết làm lịch sử)
+```
+
+Đơn bị khóa trong suốt transaction và `CANCELLED` là trạng thái cuối, nên hai yêu cầu hủy đồng thời chỉ hoàn kho một lần; yêu cầu sau nhận `409 INVALID_ORDER_TRANSITION`. Hoàn kho áp dụng cả cho món đã ngừng bán.
 
 ## Trạng thái theo hình thức phục vụ
 
 ```mermaid
 flowchart LR
-    P["PENDING"] --> C["CONFIRMED"] --> R["PROCESSING"]
-    R -->|"DINE_IN: phục vụ và hoàn tất tại bàn"| Done["COMPLETED"]
-    R -->|"DELIVERY: bắt đầu giao"| S["SHIPPING"] --> Done
-    P -->|"Khách hàng hoặc nhân viên hủy"| X["CANCELLED"]
+    P["PENDING"] -->|"POST /confirm"| C["CONFIRMED"] --> R["PROCESSING"]
+    R -->|"DINE_IN"| Done["COMPLETED"]
+    R -->|"DELIVERY"| S["SHIPPING"] --> Done
+    P -->|"Khách hoặc nhân viên hủy"| X["CANCELLED"]
     C -->|"Nhân viên hủy"| X
     R -->|"Nhân viên hủy"| X
 ```
 
-Nhân viên chỉ hủy trước SHIPPING/COMPLETED theo quy tắc đã chọn. Hủy và phục hồi tồn kho phải nằm trong một giao dịch, khóa đơn để hai yêu cầu không phục hồi hai lần. DINE_IN không có SHIPPING; CASH chỉ cho DINE_IN, COD chỉ cho DELIVERY và BANK_TRANSFER dùng cho cả hai. Trường `tableNumber` giai đoạn này là nhãn bàn được lưu trong đơn, không thêm chức năng đặt bàn hoặc quản lý bàn.
+| Trạng thái hiện tại | Nhân viên được chuyển sang | Khách được chuyển sang |
+| --- | --- | --- |
+| PENDING | CONFIRMED, CANCELLED | CANCELLED |
+| CONFIRMED | PROCESSING, CANCELLED | — |
+| PROCESSING | CANCELLED; DINE_IN → COMPLETED; DELIVERY → SHIPPING | — |
+| SHIPPING | COMPLETED | — |
+| COMPLETED, CANCELLED | — | — |
+
+Xác nhận lưu `confirmed_by`/`confirmed_at`; hủy lưu `cancelled_at`, giữ thông tin xác nhận nếu có; hoàn thành lưu `completed_at`. Thời gian do `OrderService` gán theo UTC (độ chính xác micro giây), khớp các CHECK về thứ tự thời gian trong schema. CASH chỉ cho DINE_IN, COD chỉ cho DELIVERY, BANK_TRANSFER cho cả hai. `tableNumber` là nhãn bàn lưu trong đơn; giai đoạn này chưa có đặt bàn hay quản lý bàn.

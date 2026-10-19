@@ -20,6 +20,14 @@ kaggle/
 
 ## 🚀 Hướng Dẫn Sử Dụng Nhanh
 
+### 0. Build `application.jar`
+File jar không được commit vào git. Build từ code hiện tại rồi copy vào thư mục dataset:
+
+```sh
+./mvnw -DskipTests package
+cp target/application.jar kaggle/dataset/application.jar
+```
+
 ### 1. Upload Dataset lên Kaggle
 1. Vào [Kaggle Datasets](https://www.kaggle.com/datasets) ➔ Nhấn **New Dataset**.
 2. Đặt tên Dataset: `byteme-dataset`.

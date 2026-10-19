@@ -1,6 +1,6 @@
 spring:
   application:
-    name: java-spring-boot-starter
+    name: byteme
   autoconfigure:
     exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
@@ -9,6 +9,10 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       connection-init-sql: SET time_zone = '+00:00'
+  jackson:
+    deserialization:
+      # Enum phải gửi bằng tên (DINE_IN, CASH...); 0 hoặc "0" trả 400 thay vì bị hiểu là ordinal.
+      fail-on-numbers-for-enums: true
   jpa:
     open-in-view: false
     hibernate:

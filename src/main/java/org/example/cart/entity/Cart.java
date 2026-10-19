@@ -2,13 +2,13 @@ package org.example.cart.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * created_at/updated_at/version do MySQL quản lý (một đồng hồ duy nhất), nên không map ở đây.
+ * Mọi thao tác ghi giỏ đều khóa hàng carts trước (CartRepository.lockByUserId) nên không cần @Version.
+ */
 @Entity
 @Table(name = "carts")
 @Getter
@@ -23,19 +23,6 @@ public class Cart {
 
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
-
-    @Version
-    @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

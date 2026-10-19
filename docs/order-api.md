@@ -1,12 +1,14 @@
 # Order API — phase 1
 
-Module Order có một Controller, một Service Java thuần và các Repository adapter
-dùng JDBC với schema MySQL hiện có. Spring chỉ nằm ở web, persistence và integration.
-Không thêm bảng hoặc thư viện. Cart CRUD dùng JPA; adapter checkout dùng JDBC chung giao dịch với Order.
+Module Order dùng cùng kiến trúc với Food/Cart: `OrderController` → `OrderService` →
+`OrderRepository` (Spring Data JPA) trên schema MySQL hiện có. `OrderService` không import
+framework web hay thư viện DB; Order gọi Cart và Food qua `CartService`/`FoodService`.
 
 ## Endpoint
 
 Auth luôn bật; dùng JWT từ đăng nhập thật để subject khớp ID tài khoản trong database.
+Subject không phải ID số (ví dụ token fixture `customer-a`, `staff-a` của
+`scripts/issue-local-tokens.sh`) nhận 403 trên mọi API Cart/Order, kể cả với EMPLOYEE.
 Swagger tại `/swagger-ui/index.html` có bearerAuth.
 
 | Method | Endpoint | Quyền | Kết quả |
@@ -70,13 +72,17 @@ Enum phải dùng tên như `CONFIRMED`, `DINE_IN`, `CASH`; số hoặc chuỗi 
 
 ## Cart và checkout
 
-`CartCheckout` là contract giữa Order và Cart. Bean `MySqlCartCheckout` dùng JDBC
-và bắt buộc tham gia transaction của Order:
+`OrderService.create` chạy trong một transaction và gọi các service khác (tham gia
+cùng transaction):
 
-1. `lockByUserId(userId)` khóa hàng carts, rồi đọc cartId và foodId/quantity.
-2. `clearItems(cartId)` xóa các item và tăng version giỏ trong cùng transaction.
+1. `CartService.lockItemsForCheckout(userId)` khóa hàng carts, trả foodId → số lượng
+   theo foodId tăng dần.
+2. `FoodService.reserveStock(foodId, quantity)` khóa từng món, kiểm tra còn bán/đủ kho,
+   trừ kho và trả tên/giá để lưu snapshot.
+3. Lưu đơn PENDING và chi tiết qua `OrderRepository`.
+4. `CartService.clearCart(userId)` xóa các item và tăng version giỏ.
 
-Cart CRUD dùng JPA, khóa cùng hàng carts trước khi thêm/sửa/xóa. Lần đầu thêm món
+Cart CRUD khóa cùng hàng carts trước khi thêm/sửa/xóa. Lần đầu thêm món
 dùng INSERT ... ON DUPLICATE KEY UPDATE để tạo giỏ an toàn khi có request đồng thời.
 Order lấy giá/trạng thái/tồn kho từ Food, lưu snapshot, trừ kho và dọn giỏ cùng commit;
 lỗi ở bất kỳ bước nào sẽ rollback toàn bộ. Giữ hàng carts để khách tiếp tục thêm món.
@@ -90,9 +96,8 @@ Luồng thử: đăng nhập bằng `/api/auth/token`, POST `/api/cart/items` v�
 `{"foodId":1,"quantity":2}`, rồi POST `/api/orders` theo một trong hai mẫu phía trên.
 Dùng cùng Bearer JWT cho cả Cart và Order. Cart không giữ kho; Order kiểm tra lại khi đặt.
 
-`OrderCreated(orderId, userId, cartId)` vẫn được phát trong transaction cho các consumer
-sau này. Không có listener dọn giỏ; dọn giỏ luôn thực hiện đồng bộ trước commit.
-Hủy đơn hoàn kho theo state machine, không tự khôi phục Cart. Chưa có idempotency key:
+Dọn giỏ luôn thực hiện đồng bộ trước commit, không dùng event.
+Hủy đơn hoàn kho qua `FoodService.releaseStock` theo state machine, không tự khôi phục Cart. Chưa có idempotency key:
 hai checkout liên tiếp trên giỏ đã dọn trả EMPTY_CART; không tự retry POST tạo đơn.
 
 ## Lỗi và kiểm tra
@@ -107,7 +112,7 @@ hoàn kho dùng một giao dịch, tránh hoàn kho hai lần. Tiền dùng BigD
 tổng được tính từ snapshot order_items. DATETIME trong database được đọc/ghi theo UTC.
 
 Các test Order gồm service, HTTP/phân quyền và MySQL/Testcontainers.
-Test tích hợp dùng adapter Cart thật, CartService JPA và Order JDBC để kiểm tra
+Test tích hợp dùng CartService/FoodService/OrderService thật trên MySQL để kiểm tra
 checkout, rollback chung transaction và concurrency. Spy chỉ gây lỗi có chủ đích
 hoặc giữ giao dịch tại một điểm để kiểm tra tranh chấp khóa.
 
@@ -115,4 +120,4 @@ hoặc giữ giao dịch tại một điểm để kiểm tra tranh chấp khóa
 .\mvnw.cmd '-Dtest=OrderServiceTest,OrderWebTest,OrderIntegrationTest,ArchitectureTest' test
 ```
 
-Test tích hợp cần Docker đang chạy. JAVA_HOME trỏ tới JDK 25 cài trên máy.
+Test tích hợp cần Docker đang chạy. JAVA_HOME trỏ tới JDK 21 trở lên.

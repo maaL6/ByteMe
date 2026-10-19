@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 public class UpdateCartItemRequest {
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be at least 1")
+    @NotNull(message = "Số lượng là bắt buộc")
+    @Min(value = 1, message = "Số lượng tối thiểu là 1")
     private Integer quantity;
 }

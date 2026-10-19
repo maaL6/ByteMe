@@ -6,11 +6,9 @@ import org.example.cart.dto.AddToCartRequest;
 import org.example.cart.dto.CartDto;
 import org.example.cart.dto.UpdateCartItemRequest;
 import org.example.cart.service.CartService;
+import org.example.common.CurrentUser;
 import org.example.shared.api.AuthenticatedUser;
-import org.example.shared.api.Role;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,21 +17,12 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CartController {
 
+    // Xác thực và quyền CUSTOMER do SecurityConfiguration kiểm tra trước khi vào controller.
     private final CartService cartService;
-
-    private long customerId(AuthenticatedUser user) {
-        if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
-        if (user.role() != Role.CUSTOMER) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customer required");
-        try {
-            long id = Long.parseLong(user.userId());
-            if (id > 0) return id;
-        } catch (NumberFormatException ignored) { }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid account ID");
-    }
 
     @GetMapping
     public ResponseEntity<CartDto> getCart(@AuthenticationPrincipal AuthenticatedUser user) {
-        Long userId = customerId(user);
+        long userId = CurrentUser.id(user);
         return ResponseEntity.ok(cartService.getCart(userId));
     }
 
@@ -41,7 +30,7 @@ public class CartController {
     public ResponseEntity<CartDto> addToCart(
             @AuthenticationPrincipal AuthenticatedUser user,
             @Valid @RequestBody AddToCartRequest request) {
-        Long userId = customerId(user);
+        long userId = CurrentUser.id(user);
         return ResponseEntity.ok(cartService.addToCart(userId, request));
     }
 
@@ -50,7 +39,7 @@ public class CartController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable Long cartItemId,
             @Valid @RequestBody UpdateCartItemRequest request) {
-        Long userId = customerId(user);
+        long userId = CurrentUser.id(user);
         return ResponseEntity.ok(cartService.updateCartItem(userId, cartItemId, request));
     }
 
@@ -58,7 +47,7 @@ public class CartController {
     public ResponseEntity<CartDto> removeCartItem(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable Long cartItemId) {
-        Long userId = customerId(user);
+        long userId = CurrentUser.id(user);
         return ResponseEntity.ok(cartService.removeCartItem(userId, cartItemId));
     }
 }
