@@ -201,6 +201,8 @@ paths:
           description: Món đã chuyển sang INACTIVE; response không có body.
         '400':
           $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -288,6 +290,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         '500':
@@ -309,6 +313,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/orders:
@@ -512,34 +518,34 @@ components:
       name: categoryId
       in: query
       required: false
+      description: Không phải số nguyên trả 400; danh mục không tồn tại (kể cả ID ≤ 0) trả 404.
       schema:
         type: integer
         format: int64
-        minimum: 1
     FoodIdPath:
       name: id
       in: path
       required: true
+      description: Không phải số nguyên trả 400; món không tồn tại (kể cả ID ≤ 0) trả 404.
       schema:
         type: integer
         format: int64
-        minimum: 1
     CartItemIdPath:
       name: cartItemId
       in: path
       required: true
+      description: Không phải số nguyên trả 400; dòng giỏ không tồn tại (kể cả ID ≤ 0) trả 404.
       schema:
         type: integer
         format: int64
-        minimum: 1
     OrderIdPath:
       name: orderId
       in: path
       required: true
+      description: Không phải số nguyên trả 400; đơn không tồn tại (kể cả ID ≤ 0) trả 404.
       schema:
         type: integer
         format: int64
-        minimum: 1
   requestBodies:
     FoodBody:
       required: true
@@ -792,21 +798,27 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 150
         description:
           type: string
+          maxLength: 16000
           nullable: true
         price:
           type: number
           minimum: 1
+          description: Tối đa 13 chữ số phần nguyên và 2 chữ số thập phân.
         imageUrl:
           type: string
+          maxLength: 2048
           nullable: true
         stockQuantity:
           type: integer
           minimum: 0
-          default: 0
+          description: Khi tạo mặc định 0; khi cập nhật bỏ trống thì giữ nguyên.
         status:
-          $ref: '#/components/schemas/FoodStatus'
+          allOf:
+            - $ref: '#/components/schemas/FoodStatus'
+          description: Khi tạo mặc định ACTIVE; khi cập nhật bỏ trống thì giữ nguyên.
     Food:
       type: object
       required: [id, categoryId, name, price, stockQuantity, status]

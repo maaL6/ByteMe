@@ -15,8 +15,14 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     @Query("select c from Cart c where c.userId = :userId")
     Optional<Cart> lockByUserId(Long userId);
 
-    // Atomic creation also serializes concurrent first additions for the same user.
+    // Tạo giỏ nếu chưa có; câu lệnh nguyên tử nên hai lần thêm món đầu tiên đồng thời chỉ tạo một giỏ.
     @Modifying
     @Query(value = "INSERT INTO carts (user_id) VALUES (:userId) ON DUPLICATE KEY UPDATE id = id", nativeQuery = true)
     void ensureExists(Long userId);
+
+    // Đánh dấu giỏ vừa thay đổi: version đếm số lần ghi, updated_at lấy theo đồng hồ MySQL như created_at.
+    @Modifying
+    @Query(value = "UPDATE carts SET version = version + 1, updated_at = CURRENT_TIMESTAMP(6) WHERE id = :cartId",
+            nativeQuery = true)
+    void touch(Long cartId);
 }

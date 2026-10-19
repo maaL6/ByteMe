@@ -40,8 +40,9 @@ class ApplicationTests {
     void contextLoads() {
         assertTrue(context.containsBean("authController"));
         assertTrue(context.containsBean("orderController"));
-        org.junit.jupiter.api.Assertions.assertInstanceOf(org.example.cart.integration.MySqlCartCheckout.class,
-                context.getBean(org.example.order.integration.CartCheckout.class));
+        assertTrue(context.containsBean("orderService"));
+        assertTrue(context.containsBean("cartService"));
+        assertTrue(context.containsBean("foodService"));
         assertTrue(context.containsBean("jwtDecoder"));
         assertTrue(context.containsBean("rsaKey"));
         assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM users", Long.class));

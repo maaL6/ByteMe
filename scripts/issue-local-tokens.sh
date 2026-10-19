@@ -5,11 +5,11 @@ cd "$task_backend_dir"
 if [[ -n "${SA_JAVA_HOME:-}" ]]; then
   task_java_home="$SA_JAVA_HOME"
 elif [[ -x /usr/libexec/java_home ]]; then
-  task_java_home="$(/usr/libexec/java_home -v 25)"
+  task_java_home="$(/usr/libexec/java_home -v 21+)"
 elif [[ -n "${JAVA_HOME:-}" ]]; then
   task_java_home="$JAVA_HOME"
 else
-  echo "Cần JAVA_HOME hoặc SA_JAVA_HOME trỏ JDK 25" >&2
+  echo "Cần JAVA_HOME hoặc SA_JAVA_HOME trỏ JDK 21+" >&2
   exit 1
 fi
 # ByteMe dùng Maven Wrapper; backend SA giữ script Maven riêng.

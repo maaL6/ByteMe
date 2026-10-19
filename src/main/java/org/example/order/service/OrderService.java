@@ -1,147 +1,174 @@
 package org.example.order.service;
 
-import java.time.Clock;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import org.example.order.dto.CreateOrderCommand;
+import lombok.RequiredArgsConstructor;
+import org.example.cart.service.CartService;
+import org.example.common.BusinessException;
+import org.example.food.dto.FoodDto;
+import org.example.food.service.FoodService;
+import org.example.order.dto.CreateOrderRequest;
+import org.example.order.dto.OrderDto;
+import org.example.order.dto.OrderPage;
 import org.example.order.entity.*;
-import org.example.order.integration.CartCheckout;
-import org.example.order.integration.OrderEvents;
-import org.example.order.integration.UnitOfWork;
-import org.example.order.repository.OrderFoodRepository;
 import org.example.order.repository.OrderRepository;
-import org.example.shared.api.AuthenticatedUser;
 import org.example.shared.api.Role;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-public final class OrderService {
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.List;
+import java.util.SortedMap;
+
+/**
+ * Nghiệp vụ đơn hàng. Quyền theo vai trò đã được SecurityConfiguration kiểm tra;
+ * service chỉ kiểm tra quyền sở hữu đơn và quy tắc nghiệp vụ.
+ */
+@Service
+@RequiredArgsConstructor
+public class OrderService {
+    private static final List<OrderStatus> EMPLOYEE_QUEUE =
+            List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.SHIPPING);
+
     private final OrderRepository orders;
-    private final CartCheckout carts;
-    private final OrderFoodRepository foods;
-    private final UnitOfWork transactions;
-    private final OrderEvents events;
+    private final CartService cartService;
+    private final FoodService foodService;
     private final Clock clock;
 
-    public OrderService(OrderRepository orders, CartCheckout carts, OrderFoodRepository foods,
-            UnitOfWork transactions, OrderEvents events, Clock clock) {
-        this.orders = orders;
-        this.carts = carts;
-        this.foods = foods;
-        this.transactions = transactions;
-        this.events = events;
-        this.clock = clock;
-    }
+    /**
+     * Checkout trong một giao dịch: khóa giỏ, khóa và trừ kho từng món theo foodId tăng dần,
+     * lưu đơn PENDING với snapshot tên/giá rồi dọn giỏ. Lỗi ở bất kỳ bước nào rollback toàn bộ.
+     */
+    @Transactional
+    public OrderDto create(long customerId, CreateOrderRequest request) {
+        CreateOrderRequest input = validate(request);
+        SortedMap<Long, Integer> cart = cartService.lockItemsForCheckout(customerId);
+        if (cart.isEmpty()) throw BusinessException.invalid("EMPTY_CART", "Giỏ hàng đang rỗng.");
 
-    public Order create(AuthenticatedUser user, CreateOrderCommand command) {
-        requireRole(user, Role.CUSTOMER);
-        long userId = userId(user);
-        CreateOrderCommand input = validate(command);
-        return transactions.execute(() -> {
-            var cart = carts.lockByUserId(userId);
-            if (cart == null) throw failure("CART_NOT_FOUND", "Không tìm thấy giỏ hàng.");
-            if (cart.items().isEmpty()) throw failure("EMPTY_CART", "Giỏ hàng đang rỗng.");
-            var lines = cart.items().stream().sorted(Comparator.comparingLong(CartCheckout.CartItem::foodId)).toList();
-            var items = new ArrayList<OrderItem>();
-            var ids = new HashSet<Long>();
-            for (var line : lines) {
-                if (line.foodId() <= 0 || line.quantity() <= 0 || !ids.add(line.foodId()))
-                    throw failure("VALIDATION_ERROR", "Dữ liệu món trong giỏ không hợp lệ.");
-                var food = foods.lockById(line.foodId());
-                if (!food.active()) throw failure("FOOD_UNAVAILABLE", "Món ăn đã ngừng bán.");
-                if (food.stockQuantity() < line.quantity())
-                    throw failure("INSUFFICIENT_STOCK", "Món ăn không đủ tồn kho.");
-                items.add(new OrderItem(food.id(), food.name(), food.price(), line.quantity()));
-            }
-            var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-            var order = orders.save(new Order(null, userId, input.orderType(), OrderStatus.PENDING,
-                    input.tableNumber(), input.recipientName(), input.shippingPhone(), input.shippingAddress(),
-                    input.paymentMethod(), input.note(), null, null, null, null, now, now, items));
-            for (var item : items) foods.decreaseStock(item.foodId(), item.quantity());
-            carts.clearItems(cart.cartId());
-            events.publish(new OrderEvents.OrderCreated(order.id(), userId, cart.cartId()));
-            return order;
+        Instant now = now();
+        Order order = Order.builder()
+                .userId(customerId)
+                .orderType(input.orderType())
+                .status(OrderStatus.PENDING)
+                .tableNumber(input.tableNumber())
+                .recipientName(input.recipientName())
+                .shippingPhone(input.shippingPhone())
+                .shippingAddress(input.shippingAddress())
+                .paymentMethod(input.paymentMethod())
+                .note(input.note())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        cart.forEach((foodId, quantity) -> {
+            FoodDto food = foodService.reserveStock(foodId, quantity);
+            order.getItems().add(OrderItem.builder()
+                    .order(order)
+                    .foodId(foodId)
+                    .foodName(food.getName())
+                    .unitPrice(food.getPrice())
+                    .quantity(quantity)
+                    .createdAt(now)
+                    .build());
         });
+        Order saved = orders.save(order);
+        cartService.clearCart(customerId);
+        return OrderDto.fromEntity(saved);
     }
 
-    public OrderRepository.OrderPage list(AuthenticatedUser user, OrderStatus status, OrderType type,
-            int page, int size) {
-        requireReader(user);
-        if (page < 0 || size < 1 || size > 100) throw failure("VALIDATION_ERROR", "page >= 0; size từ 1 đến 100.");
-        List<OrderStatus> statuses = List.of();
+    /** CUSTOMER chỉ thấy đơn của mình; EMPLOYEE mặc định thấy các đơn đang cần xử lý. */
+    @Transactional(readOnly = true)
+    public OrderPage list(long userId, Role role, OrderStatus status, OrderType type, int page, int size) {
+        if (page < 0 || size < 1 || size > 100 || page > Integer.MAX_VALUE / size) {
+            throw BusinessException.invalid("VALIDATION_ERROR", "page >= 0; size từ 1 đến 100.");
+        }
+        List<OrderStatus> statuses;
         if (status != null) statuses = List.of(status);
-        else if (user.role() == Role.EMPLOYEE)
-            statuses = List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.SHIPPING);
-        Long ownerId = null;
-        if (user.role() == Role.CUSTOMER) ownerId = userId(user);
-        return orders.findAll(ownerId, statuses, type, page, size);
+        else if (role == Role.EMPLOYEE) statuses = EMPLOYEE_QUEUE;
+        else statuses = List.of(OrderStatus.values());
+        Long ownerId = role == Role.CUSTOMER ? userId : null;
+
+        List<OrderDto> content = orders.findPage(ownerId, statuses, type, page, size).stream()
+                .map(OrderDto::fromEntity).toList();
+        return new OrderPage(content, page, size, orders.countMatching(ownerId, statuses, type));
     }
 
-    public Order get(AuthenticatedUser user, long id) {
-        requireReader(user);
-        requireId(id);
-        var order = orders.findById(id).orElseThrow(() -> failure("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
-        requireOwner(user, order);
+    @Transactional(readOnly = true)
+    public OrderDto get(long userId, Role role, long orderId) {
+        Order order = orders.findById(orderId).orElseThrow(OrderService::orderNotFound);
+        if (role == Role.CUSTOMER) requireOwner(order, userId);
+        return OrderDto.fromEntity(order);
+    }
+
+    /** Khách chỉ hủy đơn PENDING của chính mình. */
+    @Transactional
+    public OrderDto cancel(long customerId, long orderId) {
+        Order order = orders.lockById(orderId).orElseThrow(OrderService::orderNotFound);
+        requireOwner(order, customerId);
+        if (order.getStatus() != OrderStatus.PENDING) throw invalidTransition();
+        return OrderDto.fromEntity(moveTo(order, OrderStatus.CANCELLED, customerId));
+    }
+
+    @Transactional
+    public OrderDto confirm(long employeeId, long orderId) {
+        return updateStatus(employeeId, orderId, OrderStatus.CONFIRMED);
+    }
+
+    @Transactional
+    public OrderDto updateStatus(long employeeId, long orderId, OrderStatus next) {
+        if (next == null || next == OrderStatus.PENDING)
+            throw BusinessException.invalid("VALIDATION_ERROR", "status là bắt buộc và không thể chuyển về PENDING.");
+        Order order = orders.lockById(orderId).orElseThrow(OrderService::orderNotFound);
+        if (!canMove(order, next)) throw invalidTransition();
+        return OrderDto.fromEntity(moveTo(order, next, employeeId));
+    }
+
+    /** PENDING → CONFIRMED → PROCESSING; DINE_IN → COMPLETED, DELIVERY → SHIPPING → COMPLETED. */
+    private static boolean canMove(Order order, OrderStatus next) {
+        return switch (order.getStatus()) {
+            case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
+            case CONFIRMED -> next == OrderStatus.PROCESSING || next == OrderStatus.CANCELLED;
+            case PROCESSING -> next == OrderStatus.CANCELLED
+                    || (order.getOrderType() == OrderType.DINE_IN && next == OrderStatus.COMPLETED)
+                    || (order.getOrderType() == OrderType.DELIVERY && next == OrderStatus.SHIPPING);
+            case SHIPPING -> next == OrderStatus.COMPLETED;
+            case COMPLETED, CANCELLED -> false;
+        };
+    }
+
+    /** Đơn đã bị khóa; hủy đơn hoàn kho đúng một lần vì CANCELLED là trạng thái cuối. */
+    private Order moveTo(Order order, OrderStatus next, long actorId) {
+        Instant now = now();
+        if (next == OrderStatus.CANCELLED) {
+            order.getItems().stream()
+                    .sorted(Comparator.comparing(OrderItem::getFoodId))
+                    .forEach(item -> foodService.releaseStock(item.getFoodId(), item.getQuantity()));
+            order.setCancelledAt(now);
+        }
+        if (next == OrderStatus.CONFIRMED) {
+            order.setConfirmedBy(actorId);
+            order.setConfirmedAt(now);
+        }
+        if (next == OrderStatus.COMPLETED) order.setCompletedAt(now);
+        order.setStatus(next);
+        order.setUpdatedAt(now);
         return order;
     }
 
-    public Order cancel(AuthenticatedUser user, long id) {
-        requireRole(user, Role.CUSTOMER);
-        return changeStatus(user, id, OrderStatus.CANCELLED);
-    }
-
-    public Order confirm(AuthenticatedUser user, long id) {
-        return updateStatus(user, id, OrderStatus.CONFIRMED);
-    }
-
-    public Order updateStatus(AuthenticatedUser user, long id, OrderStatus next) {
-        requireRole(user, Role.EMPLOYEE);
-        return changeStatus(user, id, next);
-    }
-
-    private Order changeStatus(AuthenticatedUser user, long id, OrderStatus next) {
-        requireId(id);
-        if (next == null) throw failure("VALIDATION_ERROR", "status là bắt buộc.");
-        long actorId = userId(user);
-        return transactions.execute(() -> {
-            var order = orders.lockById(id).orElseThrow(() -> failure("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng."));
-            requireOwner(user, order);
-            boolean allowed = switch (order.status()) {
-                case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
-                case CONFIRMED -> next == OrderStatus.PROCESSING || next == OrderStatus.CANCELLED;
-                case PROCESSING -> next == OrderStatus.CANCELLED
-                        || (order.orderType() == OrderType.DINE_IN && next == OrderStatus.COMPLETED)
-                        || (order.orderType() == OrderType.DELIVERY && next == OrderStatus.SHIPPING);
-                case SHIPPING -> next == OrderStatus.COMPLETED;
-                case COMPLETED, CANCELLED -> false;
-            };
-            if (user.role() == Role.CUSTOMER)
-                allowed = order.status() == OrderStatus.PENDING && next == OrderStatus.CANCELLED;
-            if (!allowed) throw failure("INVALID_ORDER_TRANSITION", "Không thể chuyển trạng thái đơn hàng.");
-            if (next == OrderStatus.CANCELLED) {
-                var items = order.items().stream().sorted(Comparator.comparingLong(OrderItem::foodId)).toList();
-                for (var item : items) foods.lockById(item.foodId());
-                for (var item : items) foods.restoreStock(item.foodId(), item.quantity());
-            }
-            return orders.save(order.transitionTo(next, actorId, clock.instant().truncatedTo(ChronoUnit.MICROS)));
-        });
-    }
-
-    private static CreateOrderCommand validate(CreateOrderCommand input) {
+    private static CreateOrderRequest validate(CreateOrderRequest input) {
         if (input == null || input.orderType() == null || input.paymentMethod() == null)
-            throw failure("VALIDATION_ERROR", "orderType và paymentMethod là bắt buộc.");
+            throw BusinessException.invalid("VALIDATION_ERROR", "orderType và paymentMethod là bắt buộc.");
         String note = text(input.note(), "note", 500, false);
         if (input.orderType() == OrderType.DINE_IN) {
             if (input.recipientName() != null || input.shippingPhone() != null || input.shippingAddress() != null
                     || input.paymentMethod() == PaymentMethod.COD)
-                throw failure("VALIDATION_ERROR", "DINE_IN không nhận thông tin giao hàng hoặc thanh toán COD.");
-            return new CreateOrderCommand(input.orderType(), text(input.tableNumber(), "tableNumber", 20, true),
+                throw BusinessException.invalid("VALIDATION_ERROR", "DINE_IN không nhận thông tin giao hàng hoặc thanh toán COD.");
+            return new CreateOrderRequest(input.orderType(), text(input.tableNumber(), "tableNumber", 20, true),
                     null, null, null, input.paymentMethod(), note);
         }
         if (input.tableNumber() != null || input.paymentMethod() == PaymentMethod.CASH)
-            throw failure("VALIDATION_ERROR", "DELIVERY không nhận tableNumber hoặc thanh toán CASH.");
-        return new CreateOrderCommand(input.orderType(), null, text(input.recipientName(), "recipientName", 150, true),
+            throw BusinessException.invalid("VALIDATION_ERROR", "DELIVERY không nhận tableNumber hoặc thanh toán CASH.");
+        return new CreateOrderRequest(input.orderType(), null, text(input.recipientName(), "recipientName", 150, true),
                 text(input.shippingPhone(), "shippingPhone", 20, true),
                 text(input.shippingAddress(), "shippingAddress", 500, true), input.paymentMethod(), note);
     }
@@ -149,35 +176,25 @@ public final class OrderService {
     private static String text(String value, String field, int max, boolean required) {
         String result = value == null ? null : value.trim();
         if ((required && (result == null || result.isEmpty())) || (result != null && result.length() > max))
-            throw failure("VALIDATION_ERROR", field + " không hợp lệ (tối đa " + max + " ký tự).");
+            throw BusinessException.invalid("VALIDATION_ERROR", field + " không hợp lệ (tối đa " + max + " ký tự).");
         return result == null || result.isEmpty() ? null : result;
     }
 
-    private static void requireReader(AuthenticatedUser user) {
-        if (user.role() != Role.CUSTOMER && user.role() != Role.EMPLOYEE)
-            throw failure("FORBIDDEN", "Không có quyền xử lý đơn hàng.");
+    private static void requireOwner(Order order, long customerId) {
+        if (!order.getUserId().equals(customerId))
+            throw BusinessException.forbidden("FORBIDDEN", "Đơn hàng không thuộc khách hàng hiện tại.");
     }
 
-    private static void requireRole(AuthenticatedUser user, Role role) {
-        if (user.role() != role) throw failure("FORBIDDEN", "Không có quyền thực hiện thao tác này.");
+    private Instant now() {
+        // DATETIME(6) lưu tới micro giây; cắt trước để giá trị trả về khớp với giá trị đọc lại.
+        return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 
-    private static void requireOwner(AuthenticatedUser user, Order order) {
-        if (user.role() == Role.CUSTOMER && order.userId() != userId(user))
-            throw failure("FORBIDDEN", "Đơn hàng không thuộc khách hàng hiện tại.");
+    private static BusinessException orderNotFound() {
+        return BusinessException.notFound("ORDER_NOT_FOUND", "Không tìm thấy đơn hàng.");
     }
 
-    private static long userId(AuthenticatedUser user) {
-        try {
-            long id = Long.parseLong(user.userId());
-            if (id > 0) return id;
-        } catch (NumberFormatException ignored) { }
-        throw failure("FORBIDDEN", "JWT phải chứa ID tài khoản hợp lệ trong database.");
+    private static BusinessException invalidTransition() {
+        return BusinessException.conflict("INVALID_ORDER_TRANSITION", "Không thể chuyển trạng thái đơn hàng.");
     }
-
-    private static void requireId(long id) {
-        if (id <= 0) throw failure("VALIDATION_ERROR", "orderId phải là số nguyên dương.");
-    }
-
-    private static OrderFailure failure(String code, String message) { return new OrderFailure(code, message); }
 }

@@ -16,3 +16,6 @@ Thumbs.db
 # Auth/dev local artifacts
 .local/
 .venv/
+
+# Build artifact cho Kaggle: tạo bằng ./mvnw package rồi copy vào đây, không commit
+kaggle/dataset/application.jar

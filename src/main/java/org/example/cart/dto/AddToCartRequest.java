@@ -7,11 +7,11 @@ import lombok.Data;
 
 @Data
 public class AddToCartRequest {
-    @NotNull(message = "Food ID is required")
-    @Positive(message = "Food ID must be positive")
+    @NotNull(message = "foodId là bắt buộc")
+    @Positive(message = "foodId phải là số dương")
     private Long foodId;
 
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be at least 1")
+    @NotNull(message = "Số lượng là bắt buộc")
+    @Min(value = 1, message = "Số lượng tối thiểu là 1")
     private Integer quantity;
 }

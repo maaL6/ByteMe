@@ -3,14 +3,13 @@ package org.example;
 import java.time.Instant;
 import org.example.cart.controller.CartController;
 import org.example.cart.service.CartService;
+import org.example.common.BusinessException;
 import org.example.config.SecurityConfiguration;
 import org.example.food.controller.FoodController;
 import org.example.food.service.FoodService;
 import org.example.platform.security.LoginRateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -39,10 +38,15 @@ class FoodCartSecurityTest {
 
     @BeforeEach void tokens() {
         for (String role : new String[]{"CUSTOMER", "EMPLOYEE", "ADMIN"}) {
-            when(decoder.decode(role)).thenReturn(Jwt.withTokenValue(role).header("alg", "RS256")
-                    .subject("4").claim("role", role).issuedAt(Instant.now())
-                    .expiresAt(Instant.now().plusSeconds(300)).build());
+            token(role, "4", role);
         }
+        token("FIXTURE", "customer-a", "CUSTOMER");
+    }
+
+    private void token(String value, String subject, String role) {
+        when(decoder.decode(value)).thenReturn(Jwt.withTokenValue(value).header("alg", "RS256")
+                .subject(subject).claim("role", role).issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(300)).build());
     }
 
     @Test void publicMenuWorksWithoutTokenButFoodWritesRequireAuthentication() throws Exception {
@@ -78,6 +82,12 @@ class FoodCartSecurityTest {
         verify(cart).getCart(4L);
     }
 
+    @Test void cartSubjectThatIsNotADatabaseIdIsForbidden() throws Exception {
+        http.perform(get("/api/cart").header("Authorization", "Bearer FIXTURE"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        verifyNoInteractions(cart);
+    }
+
     @Test void onlyCustomersCanUseAnyCartEndpoint() throws Exception {
         for (String role : new String[]{"EMPLOYEE", "ADMIN"}) {
             http.perform(get("/api/cart").header("Authorization", "Bearer " + role)).andExpect(status().isForbidden());
@@ -101,10 +111,47 @@ class FoodCartSecurityTest {
         verifyNoInteractions(cart);
     }
 
+    @Test void foodInputBeyondColumnLimitsIs400AndNeverReachesService() throws Exception {
+        for (String body : new String[]{
+                "{\"categoryId\":1,\"name\":\"" + "x".repeat(151) + "\",\"price\":50000}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"imageUrl\":\"" + "u".repeat(2049) + "\"}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":12345678901234}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000.123}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":0.5}",
+                "{\"categoryId\":0,\"name\":\"Pho\",\"price\":50000}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"description\":\"" + "d".repeat(16001) + "\"}"}) {
+            http.perform(post("/api/foods").header("Authorization", "Bearer ADMIN")
+                            .contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+            http.perform(put("/api/foods/1").header("Authorization", "Bearer ADMIN")
+                            .contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(foods);
+    }
+
+    @Test void concurrentUpdateConflictsAre409() throws Exception {
+        when(foods.updateFood(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(
+                        org.example.food.entity.Food.class, 1L));
+        http.perform(put("/api/foods/1").header("Authorization", "Bearer ADMIN").contentType("application/json")
+                        .content("{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
+    }
+
     @Test void foodAndCartErrorsUseTheSharedErrorBody() throws Exception {
-        when(foods.getFoodById(999L)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Food not found"));
+        when(foods.getFoodById(999L)).thenThrow(BusinessException.notFound("FOOD_NOT_FOUND", "Không tìm thấy món ăn."));
         http.perform(get("/api/foods/999")).andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("NOT_FOUND")).andExpect(jsonPath("$.path").value("/api/foods/999"));
+                .andExpect(jsonPath("$.code").value("FOOD_NOT_FOUND")).andExpect(jsonPath("$.path").value("/api/foods/999"))
+                .andExpect(jsonPath("$.message").value("Không tìm thấy món ăn."));
+        when(foods.createFood(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(BusinessException.conflict("FOOD_NAME_CONFLICT", "Tên món ăn đã tồn tại trong thực đơn."));
+        http.perform(post("/api/foods").header("Authorization", "Bearer ADMIN").contentType("application/json")
+                        .content("{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("FOOD_NAME_CONFLICT"));
+        when(cart.getCart(4L)).thenThrow(BusinessException.notFound("CART_NOT_FOUND", "Không tìm thấy giỏ hàng."));
+        http.perform(get("/api/cart").header("Authorization", "Bearer CUSTOMER"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CART_NOT_FOUND"));
         http.perform(get("/api/foods/search")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
         http.perform(post("/api/cart/items").header("Authorization", "Bearer CUSTOMER")

@@ -1,37 +1,80 @@
 package org.example.order.entity;
 
-import java.math.BigDecimal;
+import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
-public record Order(Long id, long userId, OrderType orderType, OrderStatus status,
-        String tableNumber, String recipientName, String shippingPhone, String shippingAddress,
-        PaymentMethod paymentMethod, String note, Long confirmedBy, Instant confirmedAt,
-        Instant cancelledAt, Instant completedAt, Instant createdAt, Instant updatedAt,
-        List<OrderItem> items) {
-    public Order { items = List.copyOf(items); }
+@Entity
+@Table(name = "orders")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    public BigDecimal totalAmount() {
-        BigDecimal total = new BigDecimal("0.00");
-        for (OrderItem item : items) total = total.add(item.lineTotal());
-        return total;
-    }
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    public BigDecimal getTotalAmount() { return totalAmount(); }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 20)
+    private OrderType orderType;
 
-    public Order transitionTo(OrderStatus next, long employeeId, Instant now) {
-        Long confirmer = confirmedBy;
-        Instant confirmationTime = confirmedAt;
-        Instant cancellationTime = cancelledAt;
-        Instant completionTime = completedAt;
-        if (next == OrderStatus.CONFIRMED) {
-            confirmer = employeeId;
-            confirmationTime = now;
-        }
-        if (next == OrderStatus.CANCELLED) cancellationTime = now;
-        if (next == OrderStatus.COMPLETED) completionTime = now;
-        return new Order(id, userId, orderType, next, tableNumber, recipientName, shippingPhone,
-                shippingAddress, paymentMethod, note, confirmer, confirmationTime,
-                cancellationTime, completionTime, createdAt, now, items);
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private OrderStatus status;
+
+    @Column(name = "table_number", length = 20)
+    private String tableNumber;
+
+    @Column(name = "recipient_name", length = 150)
+    private String recipientName;
+
+    @Column(name = "shipping_phone", length = 20)
+    private String shippingPhone;
+
+    @Column(name = "shipping_address", length = 500)
+    private String shippingAddress;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false, length = 20)
+    private PaymentMethod paymentMethod;
+
+    @Column(length = 500)
+    private String note;
+
+    @Column(name = "confirmed_by")
+    private Long confirmedBy;
+
+    @Column(name = "confirmed_at")
+    private Instant confirmedAt;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    // Để null khi tạo mới: Spring Data dùng version == null để chọn persist; Hibernate tự gán 0.
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
+    // Thời điểm do OrderService gán (UTC) để các CHECK về thứ tự thời gian trong schema luôn đúng.
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @OrderBy("id")
+    @Builder.Default
+    private List<OrderItem> items = new ArrayList<>();
 }
