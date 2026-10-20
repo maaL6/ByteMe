@@ -16,7 +16,7 @@ import org.example.config.SecurityConfiguration;
 import org.example.order.controller.OrderController;
 import org.example.order.dto.OrderDto;
 import org.example.order.dto.OrderPage;
-import org.example.order.entity.*;
+import org.example.order.domain.*;
 import org.example.order.service.OrderService;
 import org.example.platform.security.LoginRateLimiter;
 import org.example.shared.api.Role;
@@ -128,7 +128,8 @@ class OrderWebTest {
     @Test void businessFailuresHaveExplicitJsonStatus() throws Exception {
         when(service.create(anyLong(), any())).thenThrow(BusinessException.invalid("EMPTY_CART", "Giỏ hàng đang rỗng."));
         http.perform(post("/api/orders").header("Authorization", "Bearer customer")
-                .contentType("application/json").content("{}"))
+                .contentType("application/json")
+                .content("{\"orderType\":\"DINE_IN\",\"tableNumber\":\"B05\",\"paymentMethod\":\"CASH\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("EMPTY_CART"))
                 .andExpect(jsonPath("$.path").value("/api/orders"))
                 .andExpect(header().string("Cache-Control", "no-store"));
@@ -188,6 +189,23 @@ class OrderWebTest {
         http.perform(put("/api/orders/1001/status").header("Authorization", "Bearer employee")
                 .contentType("application/json").content("{\"status\":\"UNKNOWN\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        verifyNoInteractions(service);
+    }
+
+    @Test void missingOrTooLongFieldsAre400WithFieldErrors() throws Exception {
+        for (String[] c : new String[][]{
+                {"{\"tableNumber\":\"B05\",\"paymentMethod\":\"CASH\"}", "orderType"},
+                {"{\"orderType\":\"DINE_IN\",\"tableNumber\":\"B05\"}", "paymentMethod"},
+                {"{\"orderType\":\"DINE_IN\",\"tableNumber\":\"" + "B".repeat(21) + "\",\"paymentMethod\":\"CASH\"}", "tableNumber"},
+                {"{\"orderType\":\"DINE_IN\",\"tableNumber\":\"B05\",\"paymentMethod\":\"CASH\",\"note\":\"" + "x".repeat(501) + "\"}", "note"}}) {
+            http.perform(post("/api/orders").header("Authorization", "Bearer customer")
+                    .contentType("application/json").content(c[0]))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.fieldErrors[0].field").value(c[1]));
+        }
+        http.perform(put("/api/orders/1001/status").header("Authorization", "Bearer employee")
+                .contentType("application/json").content("{}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").value("status"));
         verifyNoInteractions(service);
     }
 }

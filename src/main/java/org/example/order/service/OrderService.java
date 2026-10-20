@@ -8,6 +8,7 @@ import org.example.food.service.FoodService;
 import org.example.order.dto.CreateOrderRequest;
 import org.example.order.dto.OrderDto;
 import org.example.order.dto.OrderPage;
+import org.example.order.domain.*;
 import org.example.order.entity.*;
 import org.example.order.repository.OrderRepository;
 import org.example.shared.api.Role;
@@ -42,7 +43,7 @@ public class OrderService {
      */
     @Transactional
     public OrderDto create(long customerId, CreateOrderRequest request) {
-        CreateOrderRequest input = validate(request);
+        CreateOrderRequest input = applyOrderTypeRules(request);
         SortedMap<Long, Integer> cart = cartService.lockItemsForCheckout(customerId);
         if (cart.isEmpty()) throw BusinessException.invalid("EMPTY_CART", "Giỏ hàng đang rỗng.");
 
@@ -115,8 +116,8 @@ public class OrderService {
 
     @Transactional
     public OrderDto updateStatus(long employeeId, long orderId, OrderStatus next) {
-        if (next == null || next == OrderStatus.PENDING)
-            throw BusinessException.invalid("VALIDATION_ERROR", "status là bắt buộc và không thể chuyển về PENDING.");
+        if (next == OrderStatus.PENDING)
+            throw BusinessException.invalid("VALIDATION_ERROR", "Không thể chuyển đơn về PENDING.");
         Order order = orders.lockById(orderId).orElseThrow(OrderService::orderNotFound);
         if (!canMove(order, next)) throw invalidTransition();
         return OrderDto.fromEntity(moveTo(order, next, employeeId));
@@ -154,28 +155,34 @@ public class OrderService {
         return order;
     }
 
-    private static CreateOrderRequest validate(CreateOrderRequest input) {
-        if (input == null || input.orderType() == null || input.paymentMethod() == null)
-            throw BusinessException.invalid("VALIDATION_ERROR", "orderType và paymentMethod là bắt buộc.");
-        String note = text(input.note(), "note", 500, false);
+    /**
+     * DTO đã được @Valid kiểm tra bắt buộc/độ dài; ở đây là quy tắc theo loại đơn: DINE_IN cần số bàn,
+     * DELIVERY cần thông tin giao hàng, và mỗi loại chỉ nhận phương thức thanh toán phù hợp.
+     */
+    private static CreateOrderRequest applyOrderTypeRules(CreateOrderRequest input) {
+        String note = trimToNull(input.note());
         if (input.orderType() == OrderType.DINE_IN) {
             if (input.recipientName() != null || input.shippingPhone() != null || input.shippingAddress() != null
                     || input.paymentMethod() == PaymentMethod.COD)
                 throw BusinessException.invalid("VALIDATION_ERROR", "DINE_IN không nhận thông tin giao hàng hoặc thanh toán COD.");
-            return new CreateOrderRequest(input.orderType(), text(input.tableNumber(), "tableNumber", 20, true),
+            return new CreateOrderRequest(input.orderType(), required(input.tableNumber(), "tableNumber"),
                     null, null, null, input.paymentMethod(), note);
         }
         if (input.tableNumber() != null || input.paymentMethod() == PaymentMethod.CASH)
             throw BusinessException.invalid("VALIDATION_ERROR", "DELIVERY không nhận tableNumber hoặc thanh toán CASH.");
-        return new CreateOrderRequest(input.orderType(), null, text(input.recipientName(), "recipientName", 150, true),
-                text(input.shippingPhone(), "shippingPhone", 20, true),
-                text(input.shippingAddress(), "shippingAddress", 500, true), input.paymentMethod(), note);
+        return new CreateOrderRequest(input.orderType(), null, required(input.recipientName(), "recipientName"),
+                required(input.shippingPhone(), "shippingPhone"),
+                required(input.shippingAddress(), "shippingAddress"), input.paymentMethod(), note);
     }
 
-    private static String text(String value, String field, int max, boolean required) {
+    private static String required(String value, String field) {
+        String result = trimToNull(value);
+        if (result == null) throw BusinessException.invalid("VALIDATION_ERROR", field + " là bắt buộc với loại đơn này.");
+        return result;
+    }
+
+    private static String trimToNull(String value) {
         String result = value == null ? null : value.trim();
-        if ((required && (result == null || result.isEmpty())) || (result != null && result.length() > max))
-            throw BusinessException.invalid("VALIDATION_ERROR", field + " không hợp lệ (tối đa " + max + " ký tự).");
         return result == null || result.isEmpty() ? null : result;
     }
 

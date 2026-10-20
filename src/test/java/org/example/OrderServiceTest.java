@@ -14,6 +14,7 @@ import org.example.common.BusinessException;
 import org.example.food.dto.FoodDto;
 import org.example.food.service.FoodService;
 import org.example.order.dto.*;
+import org.example.order.domain.*;
 import org.example.order.entity.*;
 import org.example.order.repository.OrderRepository;
 import org.example.order.service.OrderService;
@@ -106,17 +107,13 @@ class OrderServiceTest {
         verifyNoInteractions(orders, foods);
     }
 
-    @Test void validatesServingInformationAndPaymentBeforeCallingCart() {
-        for (var input : java.util.Arrays.asList(
-                null,
-                new CreateOrderRequest(null, "B05", null, null, null, PaymentMethod.CASH, null),
-                new CreateOrderRequest(OrderType.DINE_IN, "B05", null, null, null, null, null),
+    /** Bắt buộc/độ dài do @Valid kiểm tra (OrderWebTest); service kiểm tra quy tắc theo loại đơn. */
+    @Test void appliesOrderTypeRulesBeforeCallingCart() {
+        for (var input : List.of(
                 new CreateOrderRequest(OrderType.DINE_IN, null, null, null, null, PaymentMethod.CASH, null),
                 new CreateOrderRequest(OrderType.DINE_IN, " ", null, null, null, PaymentMethod.CASH, null),
-                new CreateOrderRequest(OrderType.DINE_IN, "B".repeat(21), null, null, null, PaymentMethod.CASH, null),
                 new CreateOrderRequest(OrderType.DINE_IN, "B05", "Khách", null, null, PaymentMethod.CASH, null),
                 new CreateOrderRequest(OrderType.DINE_IN, "B05", null, null, null, PaymentMethod.COD, null),
-                new CreateOrderRequest(OrderType.DINE_IN, "B05", null, null, null, PaymentMethod.CASH, "x".repeat(501)),
                 new CreateOrderRequest(OrderType.DELIVERY, null, "Khách", "0900000004", "Địa chỉ", PaymentMethod.CASH, null),
                 new CreateOrderRequest(OrderType.DELIVERY, "B05", "Khách", "0900000004", "Địa chỉ", PaymentMethod.COD, null),
                 new CreateOrderRequest(OrderType.DELIVERY, null, null, "0900000004", "Địa chỉ", PaymentMethod.COD, null),
@@ -194,7 +191,6 @@ class OrderServiceTest {
             assertCode("ORDER_NOT_FOUND", () -> service.cancel(CUSTOMER, missing));
             assertCode("ORDER_NOT_FOUND", () -> service.confirm(EMPLOYEE, missing));
         }
-        assertCode("VALIDATION_ERROR", () -> service.updateStatus(EMPLOYEE, 1001, null));
         assertCode("VALIDATION_ERROR", () -> service.updateStatus(EMPLOYEE, 1001, OrderStatus.PENDING));
         verify(orders, never()).save(any());
         verifyNoInteractions(foods, carts);

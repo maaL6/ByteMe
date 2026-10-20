@@ -31,6 +31,7 @@ repository   Spring Data JPA (entity) → MySQL
 ```
 src/main/java/org/example/
 ├── auth/  food/  cart/  order/      mỗi module: controller/ dto/ entity/ repository/ service/
+│                                    (order/domain/: enum OrderStatus, OrderType, PaymentMethod)
 ├── common/                          BusinessException, CurrentUser, ApiError, GlobalErrors
 ├── shared/api/                      AuthenticatedUser, Role (dùng chung với Auth)
 ├── config/SecurityConfiguration     phân quyền endpoint theo vai trò
@@ -43,6 +44,13 @@ Quy tắc chung, được `ArchitectureTest` (ArchUnit) kiểm tra tự động:
   Service ném `BusinessException` (`INVALID`/`FORBIDDEN`/`NOT_FOUND`/`CONFLICT` + mã lỗi);
   `GlobalErrors` chuyển thành HTTP 400/403/404/409 với body chung
   `{status, code, message, path, fieldErrors}`.
+  Service vẫn dùng entity JPA làm mô hình dữ liệu và `@Transactional` (spring-tx) để khai báo
+  ranh giới giao dịch; tách thêm lớp domain riêng sẽ gấp đôi số lớp mà không thêm chức năng.
+  Thao tác riêng của ORM (flush, khóa, native query) nằm trong repository, ví dụ
+  `CartRepository.saveChanges`; service chỉ gọi thao tác kiểu CRUD và phương thức tự khai báo.
+- Bean Validation (`@Valid` trên DTO) kiểm tra trường bắt buộc và độ dài cho Food/Cart/Order
+  (Auth giữ `AuthValidation` riêng);
+  service chỉ kiểm tra quy tắc nghiệp vụ, như trường bắt buộc theo loại đơn `DINE_IN`/`DELIVERY`.
 - Controller không gọi thẳng repository.
 - Module khác chỉ gọi **service/dto** của Food, Cart, Order, không dùng entity/repository
   của nhau: Cart gọi `FoodService`; Order gọi `CartService` và `FoodService`.
