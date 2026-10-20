@@ -2,7 +2,6 @@
 .idea
 .vscode
 target
-database-backups
 .env
 .env.*
 .local

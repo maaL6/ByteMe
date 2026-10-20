@@ -21,11 +21,11 @@ class FoodServiceTest {
     private final FoodService service = new FoodService(foods, categories);
 
     private static FoodRequest request(String name) {
-        var request = new FoodRequest();
-        request.setCategoryId(1L);
-        request.setName(name);
-        request.setPrice(new BigDecimal("50000"));
-        return request;
+        return request(1L, name);
+    }
+
+    private static FoodRequest request(long categoryId, String name) {
+        return new FoodRequest(categoryId, name, null, new BigDecimal("50000"), null, null, null);
     }
 
     private static Food food(long id, int stock, String status) {
@@ -42,28 +42,32 @@ class FoodServiceTest {
     @Test void updateWithoutStockOrStatusKeepsCurrentValues() {
         var food = food(7, 25, "INACTIVE");
         when(foods.findById(7L)).thenReturn(Optional.of(food));
-        when(foods.save(any())).thenAnswer(call -> call.getArgument(0));
+        when(categories.existsById(1L)).thenReturn(true);
 
         var result = service.updateFood(7L, request("Phở bò"));
 
-        assertEquals(25, result.getStockQuantity());
-        assertEquals("INACTIVE", result.getStatus());
-        assertEquals(new BigDecimal("50000"), result.getPrice());
+        assertEquals(25, result.stockQuantity());
+        assertEquals("INACTIVE", result.status());
+        assertEquals(new BigDecimal("50000"), result.price());
+        assertEquals("Phở bò", food.getName());
     }
 
-    @Test void updateChecksFoodNewCategoryAndNameOfOtherFoods() {
+    @Test void updateChecksFoodCategoryAndNameOfOtherFoods() {
         assertError(BusinessException.Type.NOT_FOUND, "FOOD_NOT_FOUND", () -> service.updateFood(7L, request("Phở")));
         when(foods.findById(7L)).thenReturn(Optional.of(food(7, 25, "ACTIVE")));
-        var moved = request("Phở");
-        moved.setCategoryId(2L);
-        assertError(BusinessException.Type.NOT_FOUND, "CATEGORY_NOT_FOUND", () -> service.updateFood(7L, moved));
+        assertError(BusinessException.Type.NOT_FOUND, "CATEGORY_NOT_FOUND", () -> service.updateFood(7L, request(2L, "Phở")));
+        when(categories.existsById(1L)).thenReturn(true);
         when(foods.existsByNormalizedNameAndIdNot("phở gà", 7L)).thenReturn(true);
         assertError(BusinessException.Type.CONFLICT, "FOOD_NAME_CONFLICT", () -> service.updateFood(7L, request(" Phở Gà ")));
-        verify(foods, never()).save(any());
-        // Giữ nguyên danh mục thì không cần kiểm tra lại danh mục.
-        when(foods.save(any())).thenAnswer(call -> call.getArgument(0));
-        assertEquals("Phở", service.updateFood(7L, request("Phở")).getName());
-        verify(categories, never()).existsById(1L);
+        assertEquals("Phở", service.updateFood(7L, request("Phở")).name());
+    }
+
+    @Test void deleteOnlyStopsSelling() {
+        var food = food(7, 25, "ACTIVE");
+        when(foods.findById(7L)).thenReturn(Optional.of(food));
+        service.deleteFood(7L);
+        assertEquals("INACTIVE", food.getStatus());
+        verify(foods, never()).delete(any());
     }
 
     @Test void createUsesDefaultsAndChecksNameAcrossWholeMenu() {
@@ -71,9 +75,9 @@ class FoodServiceTest {
         when(foods.save(any())).thenAnswer(call -> call.getArgument(0));
 
         var created = service.createFood(request("  Cơm Gà "));
-        assertEquals("Cơm Gà", created.getName());
-        assertEquals(0, created.getStockQuantity());
-        assertEquals("ACTIVE", created.getStatus());
+        assertEquals("Cơm Gà", created.name());
+        assertEquals(0, created.stockQuantity());
+        assertEquals("ACTIVE", created.status());
         verify(foods).existsByNormalizedName("cơm gà");
 
         when(foods.existsByNormalizedName("cơm gà")).thenReturn(true);
@@ -91,7 +95,7 @@ class FoodServiceTest {
 
     @Test void searchEscapesLikeWildcardsAndRejectsBadKeywords() {
         service.searchFoods(" 50%_off! ", null);
-        verify(foods).searchActiveFoods("50!%!_off!!");
+        verify(foods).searchActive("50!%!_off!!", null);
         for (String keyword : new String[]{null, " ", "x".repeat(101)}) {
             assertError(BusinessException.Type.INVALID, "VALIDATION_ERROR", () -> service.searchFoods(keyword, null));
         }
@@ -100,7 +104,7 @@ class FoodServiceTest {
     @Test void cartCanOnlyAddExistingActiveFood() {
         when(foods.findById(1L)).thenReturn(Optional.of(food(1, 0, "ACTIVE")));
         when(foods.findById(2L)).thenReturn(Optional.of(food(2, 5, "INACTIVE")));
-        assertEquals(1L, service.getAvailableFood(1).getId());
+        assertEquals(1L, service.getAvailableFood(1).id());
         assertError(BusinessException.Type.CONFLICT, "FOOD_UNAVAILABLE", () -> service.getAvailableFood(2));
         assertError(BusinessException.Type.NOT_FOUND, "FOOD_NOT_FOUND", () -> service.getAvailableFood(3));
     }
@@ -109,7 +113,7 @@ class FoodServiceTest {
         when(foods.findAllById(List.of(1L, 2L))).thenReturn(List.of(food(1, 5, "ACTIVE"), food(2, 0, "INACTIVE")));
         var result = service.findByIds(List.of(1L, 2L));
         assertEquals(2, result.size());
-        assertEquals("INACTIVE", result.get(2L).getStatus());
+        assertEquals("INACTIVE", result.get(2L).status());
     }
 
     @Test void reserveStockLocksChecksAndDecrements() {
@@ -117,8 +121,8 @@ class FoodServiceTest {
         when(foods.lockById(1L)).thenReturn(Optional.of(food));
         var snapshot = service.reserveStock(1, 5);
         assertEquals(0, food.getStockQuantity());
-        assertEquals("Phở", snapshot.getName());
-        assertEquals(new BigDecimal("40000.00"), snapshot.getPrice());
+        assertEquals("Phở", snapshot.name());
+        assertEquals(new BigDecimal("40000.00"), snapshot.price());
         assertError(BusinessException.Type.CONFLICT, "INSUFFICIENT_STOCK", () -> service.reserveStock(1, 1));
         assertEquals(0, food.getStockQuantity());
 

@@ -1,7 +1,7 @@
 """Exercise the running local API with disposable fixtures; never print or save JWTs.
 
 Run: python -X utf8 scripts/test-endpoints.py
-Requires the project's dev,auth Docker Compose stack on localhost:8080.
+Requires the Docker Compose stack (docker compose up --build) on localhost:8080.
 SQL is used only for fixture categories/roles, verification and targeted cleanup.
 """
 import concurrent.futures
@@ -29,7 +29,7 @@ TOKENS = {}
 
 def sql(statement):
     result = subprocess.run(
-        ["docker", "compose", "-f", "compose.yaml", "-f", "compose.auth.yaml",
+        ["docker", "compose",
          "exec", "-T", "mysql", "sh", "-c",
          'MYSQL_PWD="$MYSQL_PASSWORD" mysql --user="$MYSQL_USER" '
          '--database="$MYSQL_DATABASE" --batch --skip-column-names --default-character-set=utf8mb4'],
@@ -139,7 +139,7 @@ def run():
     global GROUP
     http("Backend health", "GET", "/actuator/health", 200)
     http("Swagger", "GET", "/swagger-ui/index.html", 200)
-    http("OpenAPI", "GET", "/v3/api-docs", 200)
+    http("OpenAPI", "GET", "/openapi.yaml", 200)
     GROUP = "Auth"
     for index, who in enumerate(["a", "b", "employee", "admin", "inactive", "quota"]):
         payload = {"fullName": "API Test " + who, "email": f"{RUN}_{who}@example.test",
@@ -401,35 +401,5 @@ if __name__ == "__main__":
                   "passed": passed, "failed": len(RESULTS) - passed, "cleanupVerified": cleaned, "fatal": fatal, "results": RESULTS}
         (ROOT / ".local").mkdir(exist_ok=True)
         (ROOT / ".local/endpoint-test-results.json").write_text(json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8")
-        def cell(value):
-            return str(value).replace("|", "\\|").replace("\n", " ")
-        report = ["# Kết quả kiểm thử endpoint trực tiếp", "", f"Thời điểm: {output['timestamp']}",
-                  f"API: {BASE}, profile dev,auth. Run: `{RUN}`.", "",
-                  f"**{passed} pass / {len(RESULTS) - passed} fail / {len(RESULTS)} kiểm tra.**",
-                  f"Dọn dữ liệu kiểm thử: {'đã xác nhận' if cleaned else 'cần kiểm tra'}." , "",
-                  "JWT/mật khẩu không được ghi vào báo cáo. HTTP dùng tài khoản/món/đơn riêng; SQL chỉ chuẩn bị role/danh mục, đối chiếu DB và dọn fixture.",
-                  "Dọn fixture khôi phục số hàng và tổng tồn kho; AUTO_INCREMENT và quota login in-memory đã tăng trong quá trình thử.", ""]
-        failures = [value["case"] for value in RESULTS if not value["pass"]]
-        observations = [
-            ("Non-admin Food write", "P1: POST/PUT/DELETE Food cho CUSTOMER và EMPLOYEE thành công, trái UC06–08 yêu cầu Admin. SecurityConfiguration chỉ áp dụng authenticated() cho các route ghi Food."),
-            ("Omitted stock", "P1: PUT Food không gửi stockQuantity làm tồn kho 20 thành 0. FoodRequest mặc định stockQuantity=0, nên nhánh giữ giá trị cũ trong FoodService.updateFood không được dùng."),
-            ("Fractional stock", "P2: stockQuantity=1.5 được chấp nhận khi tạo Food; quantity=1.5 cũng được chấp nhận khi thêm Cart. Cần từ chối JSON số lẻ cho các trường số lượng nguyên."),
-            ("Inactive detail", "P2: GET Food công khai trả 401 cho món không tồn tại/ngừng bán hoặc tham số sai. Đối chiếu cấu hình cho thấy error dispatch tới /error vẫn bị yêu cầu xác thực; cần giữ nguyên 400/404 của lỗi gốc."),
-            ("Duplicate name different", "P2: tên trùng ở danh mục khác hoặc khác khoảng trắng trả 500. Service kiểm tra trùng theo category/name, trong khi DB unique trên LOWER(TRIM(name)) toàn menu."),
-            ("Name exceeds", "P2: tên dài 151 ký tự trả 500 thay vì 400; DTO thiếu giới hạn tương ứng cột VARCHAR(150)."),
-            ("Search applies", "P2: UC05 yêu cầu lọc khoảng giá và phân trang, nhưng search bỏ qua minPrice/maxPrice/page/size và trả list thiếu metadata."),
-            ("Price between", "P3 / lệch hợp đồng: UC06/schema yêu cầu price > 0, DTO dùng @Min(1), nên price=0.5 bị từ chối. Cần thống nhất quy tắc >=1 hay >0 trước khi sửa."),
-        ]
-        report += ["## Nhận xét và ưu tiên", ""]
-        report += ["- " + description for match, description in observations if any(match in case for case in failures)]
-        report += ["", "Các luồng thành công được kiểm tra: đăng ký/đăng nhập, role/ownership Cart và Order, snapshot giá và tổng tiền server, cả DINE_IN/DELIVERY, chuyển trạng thái, hoàn kho, không mất increment, không oversell và checkout/hủy đồng thời.",
-                   "Chưa kiểm tra hiệu năng/tải lớn, nhiều backend instance, JWT hết hạn thực tế, quota toàn IP hoặc cưỡng bức lỗi persistence giữa các bước checkout. Lỗi tồn kho/trạng thái món đã được kiểm tra giữ nguyên dữ liệu khi từ chối tạo đơn.", ""]
-        if fatal:
-            report += ["Lỗi dừng bộ kiểm thử: " + fatal, ""]
-        report += ["## Các kiểm tra không đạt", "", "| Nhóm | Kiểm tra | Mong đợi | Thực tế |", "| --- | --- | --- | --- |"]
-        report += ["| " + " | ".join(cell(value[key]) for key in ["group", "case", "expected", "actual"]) + " |" for value in RESULTS if not value["pass"]]
-        report += ["", "## Toàn bộ kết quả", "", "| Kết quả | Nhóm | Kiểm tra | Mong đợi | Thực tế |", "| --- | --- | --- | --- | --- |"]
-        report += ["| " + ("PASS" if value["pass"] else "FAIL") + " | " + " | ".join(cell(value[key]) for key in ["group", "case", "expected", "actual"]) + " |" for value in RESULTS]
-        (ROOT / "docs/endpoint-test-report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
         print(f"RESULT: {passed} passed, {len(RESULTS) - passed} failed; cleanup={cleaned}; fatal={fatal}", flush=True)
     raise SystemExit(1 if fatal or not cleaned or any(not value["pass"] for value in RESULTS) else 0)

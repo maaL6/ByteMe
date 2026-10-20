@@ -55,13 +55,12 @@ class OrderServiceTest {
                 .completedAt(status == OrderStatus.COMPLETED ? NOW.minusSeconds(30) : null)
                 .createdAt(NOW.minusSeconds(120)).updatedAt(NOW.minusSeconds(30)).build();
         order.getItems().add(OrderItem.builder().order(order).foodId(1L).foodName("Tên snapshot")
-                .unitPrice(new BigDecimal("65000.00")).quantity(2).createdAt(NOW.minusSeconds(120)).build());
+                .unitPrice(new BigDecimal("65000.00")).quantity(2).build());
         return order;
     }
 
     static FoodDto food(long id, String name, String price) {
-        return FoodDto.builder().id(id).categoryId(1L).name(name).price(new BigDecimal(price))
-                .stockQuantity(10).status("ACTIVE").build();
+        return new FoodDto(id, 1L, name, null, new BigDecimal(price), null, 10, "ACTIVE");
     }
 
     static void assertCode(String code, org.junit.jupiter.api.function.Executable action) {
@@ -247,9 +246,9 @@ class OrderServiceTest {
     @Test void customerCanOnlyCancelPendingAndStockIsRestoredOnce() {
         var pending = order(OrderType.DELIVERY, OrderStatus.PENDING);
         pending.getItems().add(OrderItem.builder().order(pending).foodId(3L).foodName("Trà")
-                .unitPrice(new BigDecimal("25000.00")).quantity(1).createdAt(NOW).build());
+                .unitPrice(new BigDecimal("25000.00")).quantity(1).build());
         pending.getItems().addFirst(OrderItem.builder().order(pending).foodId(7L).foodName("Chè")
-                .unitPrice(new BigDecimal("30000.00")).quantity(4).createdAt(NOW).build());
+                .unitPrice(new BigDecimal("30000.00")).quantity(4).build());
         when(orders.lockById(1001L)).thenReturn(Optional.of(pending));
         var cancelled = service.cancel(CUSTOMER, 1001);
         assertEquals(OrderStatus.CANCELLED, cancelled.status());

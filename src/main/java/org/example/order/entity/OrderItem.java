@@ -4,9 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
-/** Snapshot tên/giá món tại lúc đặt; không đổi khi món được sửa sau đó. */
+/** Snapshot tên/giá món tại lúc đặt; không đổi khi món được sửa sau đó. created_at do MySQL tự đặt. */
 @Entity
 @Table(name = "order_items")
 @Getter
@@ -35,7 +34,4 @@ public class OrderItem {
 
     @Column(nullable = false)
     private Integer quantity;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
 }

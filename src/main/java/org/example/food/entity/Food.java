@@ -2,12 +2,10 @@ package org.example.food.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
+/** created_at/updated_at do MySQL tự đặt (DEFAULT / ON UPDATE CURRENT_TIMESTAMP), không map ở đây. */
 @Entity
 @Table(name = "foods")
 @Getter
@@ -26,6 +24,7 @@ public class Food {
     @Column(nullable = false, length = 150)
     private String name;
 
+    // Cột sinh tự động LOWER(TRIM(name)) trong MySQL; dùng để kiểm tra trùng tên toàn menu.
     @Column(name = "normalized_name", insertable = false, updatable = false)
     private String normalizedName;
 
@@ -39,23 +38,14 @@ public class Food {
     private String imageUrl;
 
     @Column(name = "stock_quantity", nullable = false)
-    @Builder.Default
-    private Integer stockQuantity = 0;
+    private Integer stockQuantity;
 
     @Column(nullable = false, length = 20)
-    @Builder.Default
-    private String status = "ACTIVE";
+    private String status;
 
+    // Khóa lạc quan: admin sửa món đúng lúc checkout trừ kho thì bên ghi sau nhận 409.
+    // Để null khi tạo mới: Spring Data dùng version == null để chọn persist; Hibernate tự gán 0.
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Long version;
 }

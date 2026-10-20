@@ -805,8 +805,9 @@ components:
           nullable: true
         price:
           type: number
-          minimum: 1
-          description: Tối đa 13 chữ số phần nguyên và 2 chữ số thập phân.
+          minimum: 0
+          exclusiveMinimum: true
+          description: Lớn hơn 0; tối đa 13 chữ số phần nguyên và 2 chữ số thập phân.
         imageUrl:
           type: string
           maxLength: 2048

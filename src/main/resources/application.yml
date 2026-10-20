@@ -13,6 +13,8 @@ spring:
     deserialization:
       # Enum phải gửi bằng tên (DINE_IN, CASH...); 0 hoặc "0" trả 400 thay vì bị hiểu là ordinal.
       fail-on-numbers-for-enums: true
+      # Số lượng/tồn kho là số nguyên: 1.5 trả 400 thay vì bị cắt thành 1.
+      accept-float-as-int: false
   jpa:
     open-in-view: false
     hibernate:
@@ -29,16 +31,8 @@ auth:
     window-seconds: ${AUTH_LOGIN_WINDOW_SECONDS:900}
 server:
   port: ${SERVER_PORT:8080}
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      show-details: never
 springdoc:
   swagger-ui:
-    path: /swagger-ui.html
+    # Swagger UI đọc OpenAPI viết tay thay vì tài liệu sinh tự động.
     url: /openapi.yaml
     disable-swagger-default-url: true
