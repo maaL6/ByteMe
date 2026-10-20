@@ -125,12 +125,29 @@ class FoodCartSecurityTest {
         verifyNoInteractions(foods);
     }
 
-    @Test void concurrentUpdateConflictsAre409() throws Exception {
-        when(foods.updateFood(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-                .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(
-                        org.example.food.entity.Food.class, 1L));
-        http.perform(put("/api/foods/1").header("Authorization", "Bearer ADMIN").contentType("application/json")
-                        .content("{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000}"))
+    /** Không còn CHECK trong DB cho foods: chặn giá <= 0, tồn kho âm, trạng thái lạ bằng Bean Validation. */
+    @Test void invalidPriceStockOrStatusIs400AndNeverReachesService() throws Exception {
+        for (String body : new String[]{
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":-1000}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"stockQuantity\":-1}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"status\":\"DELETED\"}",
+                "{\"categoryId\":1,\"name\":\"   \",\"price\":50000}"}) {
+            http.perform(post("/api/foods").header("Authorization", "Bearer ADMIN")
+                            .contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+            http.perform(put("/api/foods/1").header("Authorization", "Bearer ADMIN")
+                            .contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(foods);
+    }
+
+    /** Ví dụ: hai lần thêm món đầu tiên đồng thời cùng tạo giỏ, lần sau vi phạm UNIQUE carts(user_id). */
+    @Test void uniqueViolationIs409Conflict() throws Exception {
+        when(cart.addToCart(org.mockito.ArgumentMatchers.eq(4L), org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uq_carts_user"));
+        http.perform(post("/api/cart/items").header("Authorization", "Bearer CUSTOMER")
+                        .contentType("application/json").content("{\"foodId\":1,\"quantity\":1}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
     }
 

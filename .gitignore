@@ -18,3 +18,4 @@ Thumbs.db
 
 # Dataset Kaggle: tạo theo kaggle/script/README.md (bước 0), không commit
 kaggle/dataset/
+__pycache__/

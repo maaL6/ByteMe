@@ -18,9 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.List;
-import java.util.SortedMap;
+import java.util.Map;
 
 /**
  * Nghiệp vụ đơn hàng. Quyền theo vai trò đã được SecurityConfiguration kiểm tra;
@@ -38,13 +37,13 @@ public class OrderService {
     private final Clock clock;
 
     /**
-     * Checkout trong một giao dịch: khóa giỏ, khóa và trừ kho từng món theo foodId tăng dần,
-     * lưu đơn PENDING với snapshot tên/giá rồi dọn giỏ. Lỗi ở bất kỳ bước nào rollback toàn bộ.
+     * Checkout trong một giao dịch: đọc giỏ, kiểm tra và trừ kho từng món, lưu đơn PENDING
+     * với snapshot tên/giá rồi dọn giỏ. Lỗi ở bất kỳ bước nào rollback toàn bộ.
      */
     @Transactional
     public OrderDto create(long customerId, CreateOrderRequest request) {
         CreateOrderRequest input = applyOrderTypeRules(request);
-        SortedMap<Long, Integer> cart = cartService.lockItemsForCheckout(customerId);
+        Map<Long, Integer> cart = cartService.getItemsForCheckout(customerId);
         if (cart.isEmpty()) throw BusinessException.invalid("EMPTY_CART", "Giỏ hàng đang rỗng.");
 
         Instant now = now();
@@ -103,7 +102,7 @@ public class OrderService {
     /** Khách chỉ hủy đơn PENDING của chính mình. */
     @Transactional
     public OrderDto cancel(long customerId, long orderId) {
-        Order order = orders.lockById(orderId).orElseThrow(OrderService::orderNotFound);
+        Order order = orders.findById(orderId).orElseThrow(OrderService::orderNotFound);
         requireOwner(order, customerId);
         if (order.getStatus() != OrderStatus.PENDING) throw invalidTransition();
         return OrderDto.fromEntity(moveTo(order, OrderStatus.CANCELLED, customerId));
@@ -118,7 +117,7 @@ public class OrderService {
     public OrderDto updateStatus(long employeeId, long orderId, OrderStatus next) {
         if (next == OrderStatus.PENDING)
             throw BusinessException.invalid("VALIDATION_ERROR", "Không thể chuyển đơn về PENDING.");
-        Order order = orders.lockById(orderId).orElseThrow(OrderService::orderNotFound);
+        Order order = orders.findById(orderId).orElseThrow(OrderService::orderNotFound);
         if (!canMove(order, next)) throw invalidTransition();
         return OrderDto.fromEntity(moveTo(order, next, employeeId));
     }
@@ -136,13 +135,11 @@ public class OrderService {
         };
     }
 
-    /** Đơn đã bị khóa; hủy đơn hoàn kho đúng một lần vì CANCELLED là trạng thái cuối. */
+    /** Hủy đơn thì hoàn kho; CANCELLED là trạng thái cuối nên một đơn chỉ được hủy một lần. */
     private Order moveTo(Order order, OrderStatus next, long actorId) {
         Instant now = now();
         if (next == OrderStatus.CANCELLED) {
-            order.getItems().stream()
-                    .sorted(Comparator.comparing(OrderItem::getFoodId))
-                    .forEach(item -> foodService.releaseStock(item.getFoodId(), item.getQuantity()));
+            order.getItems().forEach(item -> foodService.releaseStock(item.getFoodId(), item.getQuantity()));
             order.setCancelledAt(now);
         }
         if (next == OrderStatus.CONFIRMED) {

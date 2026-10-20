@@ -4,12 +4,10 @@ Run: python -X utf8 scripts/test-endpoints.py
 Requires the Docker Compose stack (docker compose up --build) on localhost:8080.
 SQL is used only for fixture categories/roles, verification and targeted cleanup.
 """
-import concurrent.futures
 import datetime
 import json
 import secrets
 import subprocess
-import threading
 import time
 import urllib.error
 import urllib.parse
@@ -125,16 +123,6 @@ def stock(food_id):
     return int(sql(f"SELECT stock_quantity FROM foods WHERE id = {int(food_id)}"))
 
 
-def parallel(actions):
-    gate = threading.Barrier(len(actions))
-    def execute(action):
-        gate.wait(timeout=5)
-        return action()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(actions)) as pool:
-        futures = [pool.submit(execute, action) for action in actions]
-        return [future.result(timeout=25) for future in futures]
-
-
 def run():
     global GROUP
     http("Backend health", "GET", "/actuator/health", 200)
@@ -214,7 +202,7 @@ def run():
     http("Duplicate name same category", "POST", "/api/foods", 409, primary_body, TOKENS["admin"])
     http("Duplicate name different category", "POST", "/api/foods", 409,
          primary_body | {"categoryId": CATEGORIES[1]}, TOKENS["admin"])
-    http("Duplicate normalized name", "POST", "/api/foods", 409,
+    http("Duplicate trimmed name", "POST", "/api/foods", 409,
          primary_body | {"name": " " + primary_body["name"] + " "}, TOKENS["admin"])
     for label, change in [("Zero price", {"price": 0}), ("Negative stock", {"stockQuantity": -1}),
                           ("Fractional stock", {"stockQuantity": 1.5}), ("Blank name", {"name": " "}),
@@ -232,7 +220,11 @@ def run():
     http("Invalid JWT", "GET", "/api/cart", 401, token="invalid")
     for who in ["employee", "admin"]:
         http(who + " cannot access cart", "GET", "/api/cart", 403, token=TOKENS[who])
-    http("Cart does not exist", "GET", "/api/cart", 404, token=TOKENS["a"])
+    cart, _ = http("Cart without saved cart", "GET", "/api/cart", 200, token=TOKENS["a"])
+    check("Missing cart reads as empty", isinstance(cart, dict) and cart.get("items") == [], [], cart)
+    carts = int(sql(f"SELECT COUNT(*) FROM carts WHERE user_id = {int(USERS['a'])}"))
+    check("Reading cart does not create one", carts == 0, 0, carts)
+    http("Checkout without saved cart", "POST", "/api/orders", 400, DINE, TOKENS["a"], code="EMPTY_CART")
     for body in [{"foodId": primary, "quantity": 0}, {"foodId": primary, "quantity": -1},
                  {"foodId": 0, "quantity": 1}, {"foodId": primary}, {"foodId": primary, "quantity": 1.5}]:
         http("Reject invalid cart line " + json.dumps(body), "POST", "/api/cart/items", 400, body, TOKENS["a"])
@@ -331,28 +323,8 @@ def run():
     http("Stop selling cart food", "DELETE", f"/api/foods/{primary}", 204, token=TOKENS["admin"])
     http("Inactive food blocks checkout", "POST", "/api/orders", 409, DINE, TOKENS["a"], code="FOOD_UNAVAILABLE")
     clear("a")
-    GROUP = "Concurrency"
-    http("Set one remaining unit", "PUT", f"/api/foods/{primary}", 200, primary_body | {"stockQuantity": 1}, TOKENS["admin"])
-    add("a", primary)
-    add("b", primary)
-    outcomes = parallel([lambda who=who: request("POST", "/api/orders", DINE, TOKENS[who]) for who in ["a", "b"]])
-    statuses = sorted(value[0] for value in outcomes)
-    check("Two customers compete for last unit", statuses == [201, 409], "201 and 409", statuses)
-    check("No overselling", stock(primary) == 0, 0, stock(primary))
-    for who in ["a", "b"]:
-        clear(who)
-    http("Reset fixture stock", "PUT", f"/api/foods/{primary}", 200, primary_body, TOKENS["admin"])
-    outcomes = parallel([lambda: request("POST", "/api/cart/items", {"foodId": primary, "quantity": 1}, TOKENS["a"]) for _ in range(2)])
-    check("Concurrent adds succeed", all(value[0] == 200 for value in outcomes), [200, 200], [value[0] for value in outcomes])
-    cart, _ = http("Read concurrently modified cart", "GET", "/api/cart", 200, token=TOKENS["a"])
-    check("No lost increment", len(cart["items"]) == 1 and cart["items"][0]["quantity"] == 2, "one line quantity 2", cart["items"][0]["quantity"])
-    outcomes = parallel([lambda: request("POST", "/api/orders", DINE, TOKENS["a"]) for _ in range(2)])
-    check("Same cart checked out once", sorted(value[0] for value in outcomes) == [201, 400], [201, 400], sorted(value[0] for value in outcomes))
-    check("Stock deducted once", stock(primary) == 18, 18, stock(primary))
-    created = next(value[1] for value in outcomes if value[0] == 201)
-    outcomes = parallel([lambda: request("DELETE", f"/api/orders/{created['id']}", token=TOKENS["a"]) for _ in range(2)])
-    check("Concurrent cancellation restores once", sorted(value[0] for value in outcomes) == [200, 409] and stock(primary) == 20,
-          "200/409 and stock 20", f"{sorted(value[0] for value in outcomes)}, stock {stock(primary)}")
+    # Concurrency checks (last unit, concurrent adds, double checkout/cancel) move to phase 2:
+    # phase 1 has no row locks or optimistic locking, so those races are the before/after target.
     GROUP = "Auth rate limit"
     for attempt in range(11):
         http("Email login limit attempt " + str(attempt + 1), "POST", "/api/auth/token", 401 if attempt < 10 else 429,

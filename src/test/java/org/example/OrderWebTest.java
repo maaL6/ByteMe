@@ -150,13 +150,6 @@ class OrderWebTest {
         }
     }
 
-    @Test void lockConflictsAre409() throws Exception {
-        doThrow(new org.springframework.dao.PessimisticLockingFailureException("lock"))
-                .when(service).cancel(4L, 1001L);
-        http.perform(delete("/api/orders/1001").header("Authorization", "Bearer customer"))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
-    }
-
     @Test void numericEnumsAre400AndNeverReachService() throws Exception {
         for (String value : List.of("1", "\"1\"")) {
             http.perform(put("/api/orders/1001/status").header("Authorization", "Bearer employee")

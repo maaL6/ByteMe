@@ -4,11 +4,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -63,12 +61,7 @@ public class GlobalErrors {
         return error(r, 405, "METHOD_NOT_ALLOWED", "Method không được hỗ trợ.");
     }
 
-    @ExceptionHandler({PessimisticLockingFailureException.class, ObjectOptimisticLockingFailureException.class})
-    ResponseEntity<ApiError> conflict(HttpServletRequest r) {
-        return error(r, 409, "CONFLICT", "Dữ liệu đang được cập nhật; vui lòng thử lại.");
-    }
-
-    /** Vi phạm unique/FK/CHECK khi hai request ghi đồng thời vượt qua bước kiểm tra trước của service. */
+    /** Vi phạm unique/FK, ví dụ hai request ghi đồng thời cùng vượt qua bước kiểm tra trước của service. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> integrity(DataIntegrityViolationException e, HttpServletRequest r) {
         log.warn("Vi phạm ràng buộc dữ liệu tại {}: {}", r.getRequestURI(), e.getMostSpecificCause().getMessage());

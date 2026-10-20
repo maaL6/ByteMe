@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -57,7 +56,7 @@ public class FoodService {
         requireCategory(request.categoryId());
 
         String name = request.name().trim();
-        if (foodRepository.existsByNormalizedName(normalize(name))) {
+        if (foodRepository.existsByName(name)) {
             throw duplicateName();
         }
 
@@ -80,7 +79,7 @@ public class FoodService {
         requireCategory(request.categoryId());
 
         String name = request.name().trim();
-        if (foodRepository.existsByNormalizedNameAndIdNot(normalize(name), id)) {
+        if (foodRepository.existsByNameAndIdNot(name, id)) {
             throw duplicateName();
         }
 
@@ -121,12 +120,12 @@ public class FoodService {
     // ----- Dùng bởi module Order, luôn trong giao dịch của Order -----
 
     /**
-     * Khóa món tới hết giao dịch, kiểm tra còn bán và đủ kho rồi trừ kho.
+     * Kiểm tra món còn bán và đủ kho rồi trừ kho; thay đổi ghi xuống DB khi giao dịch Order commit.
      * Trả về tên/giá hiện tại để Order lưu snapshot.
      */
     @Transactional
     public FoodDto reserveStock(long id, int quantity) {
-        Food food = lockFood(id);
+        Food food = findFood(id);
         requireActive(food);
         if (food.getStockQuantity() < quantity) {
             throw BusinessException.conflict("INSUFFICIENT_STOCK", "Món ăn không đủ tồn kho.");
@@ -135,19 +134,15 @@ public class FoodService {
         return FoodDto.fromEntity(food);
     }
 
-    /** Khóa món và hoàn lại kho khi hủy đơn, kể cả món đã ngừng bán. */
+    /** Hoàn lại kho khi hủy đơn, kể cả món đã ngừng bán. */
     @Transactional
     public void releaseStock(long id, int quantity) {
-        Food food = lockFood(id);
+        Food food = findFood(id);
         food.setStockQuantity(food.getStockQuantity() + quantity);
     }
 
     private Food findFood(long id) {
         return foodRepository.findById(id).orElseThrow(FoodService::foodNotFound);
-    }
-
-    private Food lockFood(long id) {
-        return foodRepository.lockById(id).orElseThrow(FoodService::foodNotFound);
     }
 
     private void requireCategory(Long categoryId) {
@@ -168,10 +163,6 @@ public class FoodService {
 
     private static BusinessException duplicateName() {
         return BusinessException.conflict("FOOD_NAME_CONFLICT", "Tên món ăn đã tồn tại trong thực đơn.");
-    }
-
-    private static String normalize(String name) {
-        return name.toLowerCase(Locale.ROOT);
     }
 
     /** Escape ký tự đại diện của LIKE để '%' và '_' trong từ khóa được tìm đúng nghĩa đen. */

@@ -57,7 +57,8 @@ class FoodServiceTest {
         when(foods.findById(7L)).thenReturn(Optional.of(food(7, 25, "ACTIVE")));
         assertError(BusinessException.Type.NOT_FOUND, "CATEGORY_NOT_FOUND", () -> service.updateFood(7L, request(2L, "Phở")));
         when(categories.existsById(1L)).thenReturn(true);
-        when(foods.existsByNormalizedNameAndIdNot("phở gà", 7L)).thenReturn(true);
+        // Service chỉ trim; so khớp không phân biệt hoa thường do collation _ci của MySQL đảm nhận.
+        when(foods.existsByNameAndIdNot("Phở Gà", 7L)).thenReturn(true);
         assertError(BusinessException.Type.CONFLICT, "FOOD_NAME_CONFLICT", () -> service.updateFood(7L, request(" Phở Gà ")));
         assertEquals("Phở", service.updateFood(7L, request("Phở")).name());
     }
@@ -78,9 +79,9 @@ class FoodServiceTest {
         assertEquals("Cơm Gà", created.name());
         assertEquals(0, created.stockQuantity());
         assertEquals("ACTIVE", created.status());
-        verify(foods).existsByNormalizedName("cơm gà");
+        verify(foods).existsByName("Cơm Gà");
 
-        when(foods.existsByNormalizedName("cơm gà")).thenReturn(true);
+        when(foods.existsByName("CƠM GÀ")).thenReturn(true);
         assertError(BusinessException.Type.CONFLICT, "FOOD_NAME_CONFLICT", () -> service.createFood(request("CƠM GÀ")));
     }
 
@@ -116,9 +117,9 @@ class FoodServiceTest {
         assertEquals("INACTIVE", result.get(2L).status());
     }
 
-    @Test void reserveStockLocksChecksAndDecrements() {
+    @Test void reserveStockChecksAndDecrements() {
         var food = food(1, 5, "ACTIVE");
-        when(foods.lockById(1L)).thenReturn(Optional.of(food));
+        when(foods.findById(1L)).thenReturn(Optional.of(food));
         var snapshot = service.reserveStock(1, 5);
         assertEquals(0, food.getStockQuantity());
         assertEquals("Phở", snapshot.name());
@@ -126,15 +127,14 @@ class FoodServiceTest {
         assertError(BusinessException.Type.CONFLICT, "INSUFFICIENT_STOCK", () -> service.reserveStock(1, 1));
         assertEquals(0, food.getStockQuantity());
 
-        when(foods.lockById(2L)).thenReturn(Optional.of(food(2, 5, "INACTIVE")));
+        when(foods.findById(2L)).thenReturn(Optional.of(food(2, 5, "INACTIVE")));
         assertError(BusinessException.Type.CONFLICT, "FOOD_UNAVAILABLE", () -> service.reserveStock(2, 1));
         assertError(BusinessException.Type.NOT_FOUND, "FOOD_NOT_FOUND", () -> service.reserveStock(3, 1));
-        verify(foods, never()).findById(any());
     }
 
-    @Test void releaseStockLocksAndRestoresEvenForInactiveFood() {
+    @Test void releaseStockRestoresEvenForInactiveFood() {
         var food = food(2, 1, "INACTIVE");
-        when(foods.lockById(2L)).thenReturn(Optional.of(food));
+        when(foods.findById(2L)).thenReturn(Optional.of(food));
         service.releaseStock(2, 3);
         assertEquals(4, food.getStockQuantity());
         assertError(BusinessException.Type.NOT_FOUND, "FOOD_NOT_FOUND", () -> service.releaseStock(3, 1));

@@ -216,6 +216,9 @@ paths:
       tags: [Cart]
       operationId: getCurrentCart
       summary: Xem giỏ hàng hiện tại
+      description: >-
+        Khách chưa có giỏ nhận 200 với `id: null` và `items: []`; thao tác đọc
+        không tạo giỏ. Giỏ được tạo ở lần thêm món đầu tiên.
       security:
         - bearerAuth: []
       responses:
@@ -225,8 +228,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/cart/items:
@@ -322,6 +323,9 @@ paths:
       tags: [Order]
       operationId: createOrder
       summary: Tạo đơn từ giỏ hàng hiện tại
+      description: >-
+        Chưa có giỏ hoặc giỏ rỗng trả 400 EMPTY_CART. Phase 1 không khóa hàng
+        khi checkout, nên các checkout đồng thời có thể bán vượt tồn kho.
       security:
         - bearerAuth: []
       requestBody:
@@ -657,7 +661,7 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
     NotFound:
-      description: Không tìm thấy cart, item, food, category hoặc order tương ứng.
+      description: Không tìm thấy dòng giỏ, food, category hoặc order tương ứng.
       content:
         application/json:
           schema:
@@ -872,6 +876,8 @@ components:
         id:
           type: integer
           format: int64
+          nullable: true
+          description: Null khi khách chưa có giỏ (GET /api/cart trả giỏ rỗng).
         userId:
           type: integer
           format: int64

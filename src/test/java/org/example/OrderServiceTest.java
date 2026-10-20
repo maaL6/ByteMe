@@ -4,9 +4,10 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.example.cart.service.CartService;
@@ -68,11 +69,11 @@ class OrderServiceTest {
         assertEquals(code, assertThrows(BusinessException.class, action).code());
     }
 
-    @Test void checkoutUsesServerPricesLocksInFoodIdOrderAndClearsCartLast() {
-        var cart = new TreeMap<Long, Integer>();
+    @Test void checkoutUsesServerPricesInCartOrderAndClearsCartLast() {
+        var cart = new LinkedHashMap<Long, Integer>();
         cart.put(5L, 1);
         cart.put(1L, 2);
-        when(carts.lockItemsForCheckout(4)).thenReturn(cart);
+        when(carts.getItemsForCheckout(4)).thenReturn(cart);
         when(foods.reserveStock(1, 2)).thenReturn(food(1, "Phở", "65000.00"));
         when(foods.reserveStock(5, 1)).thenReturn(food(5, "Trà", "25000.00"));
         when(orders.save(any())).thenAnswer(call -> {
@@ -89,22 +90,24 @@ class OrderServiceTest {
         assertEquals("B05", result.tableNumber());
         assertEquals("Ít cay", result.note());
         assertEquals(NOW, result.createdAt());
-        assertEquals(List.of(1L, 5L), result.items().stream().map(OrderItemDto::foodId).toList());
-        assertEquals("Phở", result.items().getFirst().foodName());
-        assertEquals(new BigDecimal("130000.00"), result.items().getFirst().lineTotal());
+        assertEquals(List.of(5L, 1L), result.items().stream().map(OrderItemDto::foodId).toList());
+        assertEquals("Phở", result.items().get(1).foodName());
+        assertEquals(new BigDecimal("130000.00"), result.items().get(1).lineTotal());
         assertEquals(new BigDecimal("155000.00"), result.totalAmount());
         var sequence = inOrder(carts, foods, orders);
-        sequence.verify(carts).lockItemsForCheckout(4);
-        sequence.verify(foods).reserveStock(1, 2);
+        sequence.verify(carts).getItemsForCheckout(4);
         sequence.verify(foods).reserveStock(5, 1);
+        sequence.verify(foods).reserveStock(1, 2);
         sequence.verify(orders).save(any());
         sequence.verify(carts).clearCart(4);
     }
 
-    @Test void missingCartDoesNotTouchFoodsOrOrders() {
-        when(carts.lockItemsForCheckout(4)).thenThrow(BusinessException.notFound("CART_NOT_FOUND", "missing"));
-        assertCode("CART_NOT_FOUND", () -> service.create(CUSTOMER, dineIn()));
+    /** Khách chưa có giỏ: CartService trả map rỗng, checkout báo EMPTY_CART. */
+    @Test void missingCartIsEmptyCartAndDoesNotTouchFoodsOrOrders() {
+        when(carts.getItemsForCheckout(4)).thenReturn(Map.of());
+        assertCode("EMPTY_CART", () -> service.create(CUSTOMER, dineIn()));
         verifyNoInteractions(orders, foods);
+        verify(carts, never()).clearCart(anyLong());
     }
 
     /** Bắt buộc/độ dài do @Valid kiểm tra (OrderWebTest); service kiểm tra quy tắc theo loại đơn. */
@@ -124,7 +127,7 @@ class OrderServiceTest {
     }
 
     @Test void deliveryKeepsTrimmedRecipientAndBlankNoteBecomesNull() {
-        when(carts.lockItemsForCheckout(4)).thenReturn(new TreeMap<>(java.util.Map.of(1L, 1)));
+        when(carts.getItemsForCheckout(4)).thenReturn(Map.of(1L, 1));
         when(foods.reserveStock(1, 1)).thenReturn(food(1, "Phở", "65000.00"));
         when(orders.save(any())).thenAnswer(call -> call.getArgument(0));
         var result = service.create(CUSTOMER, new CreateOrderRequest(OrderType.DELIVERY, null, " Khách ",
@@ -137,9 +140,9 @@ class OrderServiceTest {
     }
 
     @Test void emptyCartOrFoodFailureNeverSavesOrClears() {
-        when(carts.lockItemsForCheckout(4)).thenReturn(new TreeMap<>());
+        when(carts.getItemsForCheckout(4)).thenReturn(new LinkedHashMap<>());
         assertCode("EMPTY_CART", () -> service.create(CUSTOMER, dineIn()));
-        when(carts.lockItemsForCheckout(4)).thenReturn(new TreeMap<>(java.util.Map.of(1L, 2)));
+        when(carts.getItemsForCheckout(4)).thenReturn(Map.of(1L, 2));
         for (String code : List.of("INSUFFICIENT_STOCK", "FOOD_UNAVAILABLE")) {
             doThrow(BusinessException.conflict(code, code)).when(foods).reserveStock(1, 2);
             assertCode(code, () -> service.create(CUSTOMER, dineIn()));
@@ -177,7 +180,6 @@ class OrderServiceTest {
 
     @Test void ownershipIsCheckedBeforeAnyMutation() {
         when(orders.findById(1001L)).thenReturn(Optional.of(order(OrderType.DELIVERY, OrderStatus.PENDING)));
-        when(orders.lockById(1001L)).thenReturn(Optional.of(order(OrderType.DELIVERY, OrderStatus.PENDING)));
         assertCode("FORBIDDEN", () -> service.get(5, Role.CUSTOMER, 1001));
         assertCode("FORBIDDEN", () -> service.cancel(5, 1001));
         assertEquals(1001L, service.get(CUSTOMER, Role.CUSTOMER, 1001).id());
@@ -203,7 +205,7 @@ class OrderServiceTest {
                     if (next == OrderStatus.PENDING) continue; // không bao giờ là đích hợp lệ: xem test bên dưới
                     var existing = order(type, current);
                     Long confirmedBefore = existing.getConfirmedBy();
-                    when(orders.lockById(1001L)).thenReturn(Optional.of(existing));
+                    when(orders.findById(1001L)).thenReturn(Optional.of(existing));
                     boolean allowed = (current == OrderStatus.PENDING && (next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED))
                             || (current == OrderStatus.CONFIRMED && (next == OrderStatus.PROCESSING || next == OrderStatus.CANCELLED))
                             || (current == OrderStatus.PROCESSING && (next == OrderStatus.CANCELLED
@@ -231,33 +233,33 @@ class OrderServiceTest {
     }
 
     @Test void confirmIsPendingToConfirmedOnly() {
-        when(orders.lockById(1001L)).thenReturn(Optional.of(order(OrderType.DINE_IN, OrderStatus.PENDING)));
+        when(orders.findById(1001L)).thenReturn(Optional.of(order(OrderType.DINE_IN, OrderStatus.PENDING)));
         var confirmed = service.confirm(EMPLOYEE, 1001);
         assertEquals(OrderStatus.CONFIRMED, confirmed.status());
         assertEquals(2L, confirmed.confirmedBy());
-        when(orders.lockById(1001L)).thenReturn(Optional.of(order(OrderType.DINE_IN, OrderStatus.CONFIRMED)));
+        when(orders.findById(1001L)).thenReturn(Optional.of(order(OrderType.DINE_IN, OrderStatus.CONFIRMED)));
         assertCode("INVALID_ORDER_TRANSITION", () -> service.confirm(EMPLOYEE, 1001));
     }
 
-    @Test void customerCanOnlyCancelPendingAndStockIsRestoredOnce() {
+    @Test void customerCanOnlyCancelPendingAndStockIsRestoredOnceInItemOrder() {
         var pending = order(OrderType.DELIVERY, OrderStatus.PENDING);
         pending.getItems().add(OrderItem.builder().order(pending).foodId(3L).foodName("Trà")
                 .unitPrice(new BigDecimal("25000.00")).quantity(1).build());
         pending.getItems().addFirst(OrderItem.builder().order(pending).foodId(7L).foodName("Chè")
                 .unitPrice(new BigDecimal("30000.00")).quantity(4).build());
-        when(orders.lockById(1001L)).thenReturn(Optional.of(pending));
+        when(orders.findById(1001L)).thenReturn(Optional.of(pending));
         var cancelled = service.cancel(CUSTOMER, 1001);
         assertEquals(OrderStatus.CANCELLED, cancelled.status());
         assertNull(cancelled.confirmedBy());
         assertEquals(NOW, cancelled.cancelledAt());
         var sequence = inOrder(foods);
+        sequence.verify(foods).releaseStock(7, 4);
         sequence.verify(foods).releaseStock(1, 2);
         sequence.verify(foods).releaseStock(3, 1);
-        sequence.verify(foods).releaseStock(7, 4);
 
         assertCode("INVALID_ORDER_TRANSITION", () -> service.cancel(CUSTOMER, 1001));
         for (var status : List.of(OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.SHIPPING, OrderStatus.COMPLETED)) {
-            when(orders.lockById(1001L)).thenReturn(Optional.of(order(OrderType.DELIVERY, status)));
+            when(orders.findById(1001L)).thenReturn(Optional.of(order(OrderType.DELIVERY, status)));
             assertCode("INVALID_ORDER_TRANSITION", () -> service.cancel(CUSTOMER, 1001));
         }
         verify(foods, times(1)).releaseStock(1, 2);

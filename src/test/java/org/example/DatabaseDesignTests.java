@@ -35,7 +35,7 @@ class DatabaseDesignTests {
             "users", 8L, "categories", 6L, "foods", 18L, "carts", 5L,
             "cart_items", 6L, "orders", 8L, "order_items", 16L);
     private static final Map<String, String> SNAPSHOTS = Map.of(
-            "foods", "SELECT id, category_id, price, stock_quantity, status, version FROM foods ORDER BY id",
+            "foods", "SELECT id, category_id, price, stock_quantity, status FROM foods ORDER BY id",
             "cart_items", "SELECT * FROM cart_items ORDER BY id",
             "order_items", "SELECT * FROM order_items ORDER BY id");
     private static DriverManagerDataSource dataSource;
@@ -81,15 +81,14 @@ class DatabaseDesignTests {
         rollback(jdbc -> {
             reject(jdbc, "UPDATE users SET email = UPPER('admin@byteme.example') WHERE id = 2");
             reject(jdbc, "UPDATE users SET phone = '0900000001' WHERE id = 2");
-            reject(jdbc, "INSERT INTO categories (name) VALUES ('  CƠM  ')");
-            reject(jdbc, "UPDATE categories SET name = '  CƠM  ' WHERE id = 3");
+            // Collation _ci: UNIQUE trên name không phân biệt hoa thường; service đã trim trước khi lưu.
+            reject(jdbc, "INSERT INTO categories (name) VALUES ('CƠM')");
+            reject(jdbc, "UPDATE categories SET name = 'CƠM' WHERE id = 3");
             reject(jdbc, """
                     INSERT INTO foods (category_id, name, price)
-                    SELECT 2, CONCAT('  ', UPPER(name), '  '), price FROM foods WHERE id = 1
+                    SELECT 2, UPPER(name), price FROM foods WHERE id = 1
                     """);
-            jdbc.update("INSERT INTO categories (name) VALUES ('  Danh mục mới  ')");
-            assertEquals("danh mục mới", jdbc.queryForObject(
-                    "SELECT normalized_name FROM categories WHERE id = LAST_INSERT_ID()", String.class));
+            // Collation _as: có dấu và không dấu là hai tên khác nhau.
             jdbc.update("INSERT INTO categories (name) VALUES ('Com')");
         });
     }
@@ -116,53 +115,15 @@ class DatabaseDesignTests {
     }
 
     @Test
-    void invalidAmountsQuantitiesAndEnumValuesAreRejected() {
+    void invalidUserEnumsAndMissingOrderTypeAreRejected() {
         rollback(jdbc -> {
             for (String sql : List.of(
-                    "UPDATE foods SET price = 0 WHERE id = 1",
-                    "UPDATE foods SET stock_quantity = -1 WHERE id = 1",
-                    "UPDATE foods SET version = -1 WHERE id = 1",
-                    "UPDATE carts SET version = -1 WHERE id = 1",
-                    "UPDATE orders SET version = -1 WHERE id = 1001",
-                    "UPDATE cart_items SET quantity = 0 WHERE id = 1",
-                    "UPDATE order_items SET quantity = 0 WHERE id = 1",
-                    "UPDATE order_items SET unit_price = 0 WHERE id = 1",
                     "UPDATE users SET role = 'customer' WHERE id = 4",
                     "UPDATE users SET role = 'MANAGER' WHERE id = 4",
                     "UPDATE users SET status = 'UNKNOWN' WHERE id = 4",
-                    "UPDATE foods SET status = 'active' WHERE id = 1",
-                    "UPDATE foods SET status = 'DELETED' WHERE id = 1",
-                    "UPDATE orders SET status = 'DELIVERED' WHERE id = 1001",
-                    "UPDATE orders SET order_type = 'delivery' WHERE id = 1001",
-                    "UPDATE orders SET order_type = 'TAKEAWAY' WHERE id = 1001",
-                    "UPDATE orders SET order_type = NULL WHERE id = 1001",
-                    "UPDATE orders SET payment_method = 'cod' WHERE id = 1001",
-                    "UPDATE orders SET payment_method = 'CREDIT_CARD' WHERE id = 1001")) {
+                    "UPDATE orders SET order_type = NULL WHERE id = 1001")) {
                 reject(jdbc, sql);
             }
-        });
-    }
-
-    @Test
-    void fulfillmentFieldsMustMatchTheOrderType() {
-        rollback(jdbc -> {
-            for (String column : List.of("recipient_name", "shipping_phone", "shipping_address")) {
-                for (Object value : new Object[] {null, "", "   "}) {
-                    reject(jdbc, "UPDATE orders SET " + column + " = ? WHERE id = 1001", value);
-                }
-                for (String value : List.of("x", "", "   ")) {
-                    reject(jdbc, "UPDATE orders SET " + column + " = ? WHERE id = 1002", value);
-                }
-            }
-            for (Object table : new Object[] {null, "", "   "}) {
-                reject(jdbc, "UPDATE orders SET table_number = ? WHERE id = 1002", table);
-            }
-            for (String table : List.of("B01", "", "   ")) {
-                reject(jdbc, "UPDATE orders SET table_number = ? WHERE id = 1001", table);
-            }
-            reject(jdbc, "UPDATE orders SET payment_method = 'CASH' WHERE id = 1001");
-            reject(jdbc, "UPDATE orders SET payment_method = 'COD' WHERE id = 1002");
-            reject(jdbc, "UPDATE orders SET status = 'SHIPPING' WHERE id = 1002");
         });
     }
 
@@ -196,30 +157,6 @@ class DatabaseDesignTests {
     }
 
     @Test
-    void statesRequireConsistentConfirmationAndTerminalTimes() {
-        rollback(jdbc -> {
-            reject(jdbc, "UPDATE orders SET confirmed_by = 2, confirmed_at = '2026-09-30 03:01:00' WHERE id = 1001");
-            reject(jdbc, "UPDATE orders SET cancelled_at = '2026-09-30 03:01:00' WHERE id = 1001");
-            reject(jdbc, "UPDATE orders SET completed_at = '2026-09-30 03:01:00' WHERE id = 1001");
-            for (String status : List.of("CONFIRMED", "PROCESSING", "SHIPPING", "COMPLETED", "CANCELLED")) {
-                reject(jdbc, "UPDATE orders SET status = ? WHERE id = 1001", status);
-            }
-            for (long id : new long[] {1002, 1003, 1004, 1005, 1007}) {
-                reject(jdbc, "UPDATE orders SET confirmed_by = NULL, confirmed_at = NULL WHERE id = ?", id);
-            }
-            reject(jdbc, "UPDATE orders SET completed_at = NULL WHERE id = 1005");
-            reject(jdbc, "UPDATE orders SET cancelled_at = NULL WHERE id = 1006");
-            reject(jdbc, "UPDATE orders SET status = 'PROCESSING' WHERE id = 1005");
-            reject(jdbc, "UPDATE orders SET status = 'PENDING' WHERE id = 1006");
-            reject(jdbc, "UPDATE orders SET completed_at = '2026-09-26 02:04:00' WHERE id = 1005");
-            reject(jdbc, "UPDATE orders SET confirmed_by = 2, confirmed_at = '2026-09-29 07:11:00' WHERE id = 1006");
-            jdbc.update("UPDATE orders SET status = 'CANCELLED', cancelled_at = '2026-09-30 03:01:00' WHERE id = 1002");
-            assertEquals(2L, jdbc.queryForObject("SELECT confirmed_by FROM orders WHERE id = 1002", Long.class));
-            jdbc.update("UPDATE orders SET status = 'COMPLETED', completed_at = '2026-09-30 02:31:00' WHERE id = 1003");
-        });
-    }
-
-    @Test
     void totalsFollowItemChangesWithoutUpdatingTheHeader() {
         rollback(jdbc -> {
             BigDecimal oldTotal = total(1001);
@@ -246,7 +183,7 @@ class DatabaseDesignTests {
         var before = snapshots();
         runScript("db/schema.sql");
         assertEquals(before, snapshots());
-        assertEquals(new BigDecimal("180000.00"), total(1001));
+        assertEquals(0, new BigDecimal("180000.00").compareTo(total(1001)));
     }
 
     @Test
@@ -273,7 +210,8 @@ class DatabaseDesignTests {
     }
 
     private static BigDecimal total(long orderId) {
-        return db.queryForObject("SELECT total_amount FROM order_totals WHERE order_id = ?", BigDecimal.class, orderId);
+        return db.queryForObject("SELECT COALESCE(SUM(unit_price * quantity), 0) FROM order_items WHERE order_id = ?",
+                BigDecimal.class, orderId);
     }
 
     private static void rollback(Consumer<JdbcTemplate> action) {
