@@ -64,12 +64,7 @@ public class Order {
     @Column(name = "completed_at")
     private Instant completedAt;
 
-    // Để null khi tạo mới: Spring Data dùng version == null để chọn persist; Hibernate tự gán 0.
-    @Version
-    @Column(nullable = false)
-    private Long version;
-
-    // Thời điểm do OrderService gán (UTC) để các CHECK về thứ tự thời gian trong schema luôn đúng.
+    // Thời điểm do OrderService gán (UTC) để mọi mốc thời gian của đơn dùng cùng một đồng hồ.
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

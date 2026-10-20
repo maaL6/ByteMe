@@ -14,11 +14,10 @@ import org.example.food.service.FoodService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 @Service
 @RequiredArgsConstructor
@@ -27,16 +26,19 @@ public class CartService {
     private final CartRepository cartRepository;
     private final FoodService foodService;
 
+    /** Chưa có giỏ thì trả giỏ rỗng (id = null) mà không tạo hàng carts. */
     @Transactional(readOnly = true)
     public CartDto getCart(long userId) {
-        Cart cart = cartRepository.findByUserId(userId).orElseThrow(CartService::cartNotFound);
-        return toCartDto(cart);
+        return cartRepository.findByUserId(userId)
+                .map(this::toCartDto)
+                .orElseGet(() -> new CartDto(null, userId, List.of()));
     }
 
+    /** Giỏ được tạo ở lần thêm món đầu tiên. */
     @Transactional
     public CartDto addToCart(long userId, AddToCartRequest request) {
-        cartRepository.ensureExists(userId);
-        Cart cart = lockCart(userId);
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseGet(() -> cartRepository.save(Cart.builder().userId(userId).build()));
         FoodDto food = foodService.getAvailableFood(request.foodId());
 
         Optional<CartItem> existingItem = cart.getItems().stream()
@@ -65,7 +67,7 @@ public class CartService {
 
     @Transactional
     public CartDto updateCartItem(long userId, Long cartItemId, UpdateCartItemRequest request) {
-        Cart cart = lockCart(userId);
+        Cart cart = cartRepository.findByUserId(userId).orElseThrow(CartService::cartItemNotFound);
 
         CartItem cartItem = cart.getItems().stream()
                 .filter(item -> item.getId().equals(cartItemId))
@@ -79,7 +81,7 @@ public class CartService {
 
     @Transactional
     public CartDto removeCartItem(long userId, Long cartItemId) {
-        Cart cart = lockCart(userId);
+        Cart cart = cartRepository.findByUserId(userId).orElseThrow(CartService::cartItemNotFound);
 
         boolean removed = cart.getItems().removeIf(item -> item.getId().equals(cartItemId));
         if (!removed) {
@@ -92,28 +94,22 @@ public class CartService {
 
     // ----- Dùng bởi module Order, luôn trong giao dịch checkout -----
 
-    /**
-     * Khóa giỏ tới hết giao dịch checkout (thêm/sửa giỏ đồng thời phải chờ) và trả về
-     * foodId → số lượng, sắp theo foodId tăng dần để Order khóa món đúng thứ tự.
-     */
-    @Transactional
-    public SortedMap<Long, Integer> lockItemsForCheckout(long userId) {
-        Cart cart = lockCart(userId);
-        SortedMap<Long, Integer> items = new TreeMap<>();
-        cart.getItems().forEach(item -> items.put(item.getFoodId(), item.getQuantity()));
+    /** foodId → số lượng theo thứ tự món trong giỏ; chưa có giỏ thì trả map rỗng. */
+    @Transactional(readOnly = true)
+    public Map<Long, Integer> getItemsForCheckout(long userId) {
+        Map<Long, Integer> items = new LinkedHashMap<>();
+        cartRepository.findByUserId(userId).ifPresent(cart ->
+                cart.getItems().forEach(item -> items.put(item.getFoodId(), item.getQuantity())));
         return items;
     }
 
     /** Dọn giỏ sau khi tạo đơn; giữ lại hàng carts để khách tiếp tục thêm món. */
     @Transactional
     public void clearCart(long userId) {
-        Cart cart = lockCart(userId);
-        cart.getItems().clear();
-        cartRepository.saveChanges(cart);
-    }
-
-    private Cart lockCart(long userId) {
-        return cartRepository.lockByUserId(userId).orElseThrow(CartService::cartNotFound);
+        cartRepository.findByUserId(userId).ifPresent(cart -> {
+            cart.getItems().clear();
+            cartRepository.saveChanges(cart);
+        });
     }
 
     private CartDto toCartDto(Cart cart) {
@@ -123,10 +119,6 @@ public class CartService {
                 .map(item -> new CartItemDto(item.getId(), foods.get(item.getFoodId()), item.getQuantity()))
                 .toList();
         return new CartDto(cart.getId(), cart.getUserId(), items);
-    }
-
-    private static BusinessException cartNotFound() {
-        return BusinessException.notFound("CART_NOT_FOUND", "Không tìm thấy giỏ hàng.");
     }
 
     private static BusinessException cartItemNotFound() {

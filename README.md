@@ -9,6 +9,10 @@ Springdoc OpenAPI, JUnit 5 và Testcontainers. Maven 3.9.11 qua Maven Wrapper.
 
 ## Kiến trúc
 
+Chi tiết: [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md),
+[docs/database-design.md](docs/database-design.md), đặc tả use case
+[docs/Project KTPM.md](<docs/Project KTPM.md>).
+
 Modular monolith gồm 4 module: `auth`, `food`, `cart`, `order`. Mọi module dùng cùng
 một kiểu phân tầng:
 
@@ -38,15 +42,15 @@ src/main/java/org/example/
 └── platform/                        BCrypt, phát/kiểm tra JWT, rate limit đăng nhập
 ```
 
-Quy tắc chung, được `ArchitectureTest` (ArchUnit) kiểm tra tự động:
+Quy tắc chung (các quy tắc về phụ thuộc giữa tầng/module được `ArchitectureTest` kiểm tra tự động):
 
 - Tầng `service` không phụ thuộc Spring Web/HTTP, Servlet, Spring Data, JDBC, JPA hay Hibernate.
-  Service ném `BusinessException` (`INVALID`/`FORBIDDEN`/`NOT_FOUND`/`CONFLICT` + mã lỗi);
+  Service của Food/Cart/Order ném `BusinessException` (`INVALID`/`FORBIDDEN`/`NOT_FOUND`/`CONFLICT` + mã lỗi);
   `GlobalErrors` chuyển thành HTTP 400/403/404/409 với body chung
-  `{status, code, message, path, fieldErrors}`.
+  `{status, code, message, path, fieldErrors}`. Auth dùng `AuthFailure` và handler riêng `AuthErrors`.
   Service vẫn dùng entity JPA làm mô hình dữ liệu và `@Transactional` (spring-tx) để khai báo
   ranh giới giao dịch; tách thêm lớp domain riêng sẽ gấp đôi số lớp mà không thêm chức năng.
-  Thao tác riêng của ORM (flush, khóa, native query) nằm trong repository, ví dụ
+  Thao tác riêng của ORM (flush) nằm trong repository, ví dụ
   `CartRepository.saveChanges`; service chỉ gọi thao tác kiểu CRUD và phương thức tự khai báo.
 - Bean Validation (`@Valid` trên DTO) kiểm tra trường bắt buộc và độ dài cho Food/Cart/Order
   (Auth giữ `AuthValidation` riêng);
@@ -59,13 +63,24 @@ Quy tắc chung, được `ArchitectureTest` (ArchUnit) kiểm tra tự động:
 
 Checkout (`POST /api/orders`) chạy đồng bộ trong **một transaction**:
 
-1. Khóa giỏ của khách (`SELECT … FOR UPDATE`); thêm/sửa giỏ đồng thời phải chờ.
-2. Khóa từng món theo `foodId` tăng dần, kiểm tra còn bán và đủ kho, trừ kho.
+1. Đọc giỏ của khách theo thứ tự dòng giỏ; chưa có giỏ hoặc giỏ rỗng trả `400 EMPTY_CART`.
+2. Với từng món: đọc món, kiểm tra còn bán và đủ kho, trừ kho.
 3. Lưu đơn `PENDING` với snapshot tên/giá món (giá do server quyết định).
 4. Dọn giỏ. Lỗi ở bất kỳ bước nào sẽ rollback toàn bộ.
 
-Hủy đơn khóa đơn rồi hoàn kho theo `foodId` tăng dần trong cùng transaction.
-Sửa món của admin dùng `@Version` (khóa lạc quan): nếu đụng checkout đang chạy thì trả 409.
+Hủy đơn đọc đơn, kiểm tra bước chuyển rồi hoàn kho từng dòng trong cùng transaction.
+`GET /api/cart` khi khách chưa có giỏ trả giỏ rỗng (`id: null`, `items: []`) và không tạo
+giỏ; giỏ được tạo ở lần thêm món đầu tiên.
+
+**Giới hạn phase 1.** Theo yêu cầu "chỉ triển khai chức năng cơ bản, không cần tối ưu",
+phase 1 không dùng khóa hàng (`SELECT … FOR UPDATE`) hay khóa lạc quan (`@Version`):
+
+- Checkout đồng thời có thể bán vượt kho do lost update: hai transaction cùng đọc một tồn kho,
+  cùng ghi `stock - qty`. Tồn kho không âm vì service kiểm tra `stock >= qty` trước khi ghi.
+- Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể hoàn kho hai lần.
+- Admin sửa món đồng thời với checkout có thể ghi đè tồn kho.
+
+Các điểm này để dành cho phase 2 và là mục tiêu đo trước/sau cải tiến.
 
 ## Đặc tả API
 
@@ -96,9 +111,9 @@ Trạng thái đơn: `PENDING → CONFIRMED → PROCESSING`, rồi `DINE_IN → 
 `DELIVERY → SHIPPING → COMPLETED`. Nhân viên hủy được ở `PENDING/CONFIRMED/PROCESSING`.
 
 Mã lỗi nghiệp vụ thường gặp: `VALIDATION_ERROR`, `EMPTY_CART` (400); `FORBIDDEN` (403);
-`FOOD_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `CART_NOT_FOUND`, `CART_ITEM_NOT_FOUND`,
+`FOOD_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `CART_ITEM_NOT_FOUND`,
 `ORDER_NOT_FOUND` (404); `FOOD_UNAVAILABLE`, `INSUFFICIENT_STOCK`, `FOOD_NAME_CONFLICT`,
-`INVALID_ORDER_TRANSITION`, `CONFLICT` (409).
+`INVALID_ORDER_TRANSITION`, `CONFLICT` (409, vi phạm UNIQUE của database).
 
 ## Kiểm thử
 
@@ -113,7 +128,9 @@ docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYS
 ```
 
 Gồm test service, test HTTP/phân quyền (MockMvc), test MySQL tích hợp (checkout,
-rollback, đồng thời, không bán vượt kho) và `ArchitectureTest`. Kiểm thử tải trên
+rollback, trừ/hoàn kho, giỏ rỗng) và `ArchitectureTest`. Các test đồng thời (khóa hàng,
+`@Version`, không bán vượt kho khi tranh chấp) đã được bỏ ở phase 1 và sẽ quay lại ở
+phase 2 cùng cơ chế chống tranh chấp. Kiểm thử tải trên
 Kaggle: xem [kaggle/script/README.md](kaggle/script/README.md).
 
 ## Auth mặc định — UC-01/02
@@ -152,7 +169,8 @@ CLI thử nghiệm `LocalTokenCli` nằm trong `src/test/java/org/example/dev/`,
 ## Cart → Order
 
 Dùng JWT đăng nhập thật cho cả Cart và Order; không dùng `X-User-Id`. Subject của JWT
-phải là ID tài khoản trong database, nếu không API Cart/Order trả 403.
+phải là ID số dương (ID tài khoản); subject không phải số (ví dụ JWT fixture) bị 403 ở
+Cart/Order. Service không kiểm tra ID đó có tồn tại trong database.
 POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/orders`:
 
 ```json
@@ -167,5 +185,5 @@ POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/or
   Khách thấy mọi đơn của mình; nhân viên mặc định thấy PENDING/CONFIRMED/PROCESSING/SHIPPING.
 - Sau checkout giỏ vẫn còn nhưng rỗng. Chưa có idempotency key: gửi lại POST trên giỏ đã dọn trả `EMPTY_CART`.
 
-Request/response đầy đủ xem Swagger UI; luồng khóa và trạng thái xem
+Request/response đầy đủ xem Swagger UI; luồng checkout và trạng thái xem
 [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md).

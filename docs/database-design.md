@@ -3,6 +3,11 @@
 MySQL 8.4/InnoDB cho [UC01–UC18](Project%20KTPM.md), phục vụ một nhà hàng.
 Schema được tạo trực tiếp bằng SQL; dữ liệu mẫu là một script riêng, tùy chọn.
 
+Phase 1 dùng schema tối giản: khóa chính, `NOT NULL`, giá trị mặc định, FK và
+một số UNIQUE cần cho nghiệp vụ. Các bảng Food/Cart/Order không có CHECK, cột
+generated, cột `version`, view hay index tối ưu; quy tắc dữ liệu do tầng service
+và Bean Validation kiểm tra. Bảng `users` của Auth giữ nguyên định nghĩa.
+
 ## Bảng và quan hệ
 
 ```mermaid
@@ -23,43 +28,47 @@ FK cho phép tạo header đơn trước chi tiết. Một đơn hợp lệ ph�
 | Bảng | Dữ liệu và ràng buộc chính |
 | --- | --- |
 | `users` | Họ tên, email/SĐT unique, BCrypt hash; một vai trò `CUSTOMER`/`EMPLOYEE`/`ADMIN`; trạng thái `ACTIVE`/`INACTIVE`/`LOCKED` |
-| `categories` | Tên, mô tả; unique `normalized_name = LOWER(TRIM(name))` |
-| `foods` | Một danh mục, tên, mô tả, ảnh, giá > 0, tồn kho ≥ 0, trạng thái `ACTIVE`/`INACTIVE`; tên chuẩn hóa unique toàn menu |
+| `categories` | Tên, mô tả; unique `name` (`uq_categories_name`) |
+| `foods` | Một danh mục, tên, mô tả, ảnh, giá, tồn kho, trạng thái `ACTIVE`/`INACTIVE`; unique `name` toàn menu (`uq_foods_name`) |
 | `carts` | FK người dùng; `user_id` unique nên mỗi tài khoản có tối đa một giỏ |
-| `cart_items` | FK giỏ/món; số lượng > 0; unique `(cart_id, food_id)` |
+| `cart_items` | FK giỏ (xóa giỏ cascade)/món; số lượng; unique `(cart_id, food_id)` |
 | `orders` | FK chủ đơn/người xác nhận; loại đơn, thông tin bàn/giao hàng, phương thức, trạng thái và thời gian |
-| `order_items` | FK đơn/món; snapshot tên, giá > 0, số lượng > 0; unique `(order_id, food_id)`; `line_total` tự tính |
+| `order_items` | FK đơn/món; snapshot tên, đơn giá, số lượng; unique `(order_id, food_id)` |
 
 Định nghĩa đầy đủ: [schema.sql](../src/main/resources/db/schema.sql).
 
 ## Quy tắc dữ liệu
 
-- Tên món/danh mục không phân biệt hoa thường và khoảng trắng đầu/cuối, có phân
-  biệt dấu. Một món thuộc một danh mục và có một giá dùng cho cả hai loại đơn.
+- Tên món/danh mục unique, không phân biệt hoa thường (collation `utf8mb4_0900_as_ci`),
+  có phân biệt dấu. Với món, `FoodService` bỏ khoảng trắng đầu/cuối trước khi lưu và
+  kiểm tra trùng tên (`existsByName`); danh mục chỉ được nạp từ `seed.sql`. Một món thuộc một danh mục và có một giá dùng cho
+  cả hai loại đơn.
+- Giá > 0 và tồn kho ≥ 0 khi Admin tạo/sửa món được Bean Validation kiểm tra
+  (`@Positive`, `@Min(0)`), database không có CHECK tương ứng.
 - `stock_quantity` là số suất còn có thể đặt, do Admin cập nhật. `ACTIVE` nhưng
   tồn kho bằng 0 nghĩa là đang bán nhưng hết suất. Thêm vào giỏ chưa giữ hàng;
-  checkout trừ kho, hủy hợp lệ hoàn kho đúng một lần.
+  checkout trừ kho, hủy hợp lệ hoàn kho.
 - Tiền dùng `DECIMAL(15,2)` và Java `BigDecimal`. Chưa có phí, thuế hoặc giảm giá.
-  `order_items.line_total = unit_price * quantity` là cột generated.
-- Không lưu tổng riêng trong `orders`. View `order_totals(order_id, total_amount)`
-  tính tổng từ snapshot chi tiết, không lấy giá hiện tại trong `foods`.
-  Header chưa có chi tiết trả tổng 0 để có thể phát hiện đơn thiếu dữ liệu.
+- Không lưu tổng riêng trong `orders`. Tổng đơn tính từ snapshot chi tiết
+  (`unit_price * quantity`), không lấy giá hiện tại trong `foods`; API trả
+  `OrderDto.totalAmount`.
 - Snapshot tên/giá món và thông tin phục vụ giữ lịch sử khi hồ sơ/menu thay đổi.
   Chi tiết đơn không được chỉnh sửa sau checkout; schema chưa tự cấm sửa/xóa snapshot.
-- Timestamps dùng `DATETIME(6)` theo UTC. `version` trên món, giỏ và đơn hỗ trợ
-  kiểm soát cập nhật đồng thời; database không tự tăng cột này.
+- Timestamps dùng `DATETIME(6)` theo UTC.
 
-Đọc tổng đơn:
+Đọc tổng đơn bằng SQL:
 
 ```sql
-SELECT o.id, o.status, ot.total_amount
+SELECT o.id, o.status, COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS total_amount
 FROM orders o
-JOIN order_totals ot ON ot.order_id = o.id;
+LEFT JOIN order_items oi ON oi.order_id = o.id
+GROUP BY o.id, o.status;
 ```
 
 ## Hình thức phục vụ
 
-`order_type` bắt buộc ghi rõ, không có default. CHECK bảo vệ các tổ hợp sau:
+`order_type` bắt buộc ghi rõ, không có default. `OrderService` kiểm tra các tổ hợp sau
+(database không có CHECK):
 
 | Loại đơn | Thông tin bắt buộc | Trường phải null | Thanh toán |
 | --- | --- | --- | --- |
@@ -73,7 +82,7 @@ lựa chọn, chưa xác nhận giao dịch thanh toán.
 
 Luồng chung: `PENDING → CONFIRMED → PROCESSING`.
 Đơn tại chỗ đi tiếp `COMPLETED`; đơn giao hàng đi `SHIPPING → COMPLETED`.
-CHECK cấm `SHIPPING` cho `DINE_IN`.
+`OrderService` cấm `SHIPPING` cho `DINE_IN`.
 
 | Trạng thái | Người/thời điểm xác nhận | `cancelled_at` | `completed_at` |
 | --- | --- | --- | --- |
@@ -83,24 +92,37 @@ CHECK cấm `SHIPPING` cho `DINE_IN`.
 | `CANCELLED` | Cả hai null hoặc cùng có giá trị | Bắt buộc | Null |
 
 Các mốc không trước `created_at`; hủy/hoàn thành không trước xác nhận nếu có.
-CHECK kiểm tra bản ghi hiện tại, chưa bảo vệ thứ tự chuyển từ trạng thái cũ.
+`OrderService` gán các mốc và kiểm tra bước chuyển; database không tự kiểm tra.
 Khách chỉ hủy `PENDING`; nhân viên có thể hủy `PENDING`/`CONFIRMED`/`PROCESSING`.
 Đơn hủy sau xác nhận giữ thông tin xác nhận.
 
 ## Toàn vẹn và xóa
 
 FK dùng `RESTRICT` để bảo vệ dữ liệu liên quan; riêng xóa giỏ cascade các dòng giỏ.
-Món còn tham chiếu được chuyển `INACTIVE`; chỉ xóa vật lý khi hết tham chiếu.
+`DELETE /api/foods/{id}` luôn chỉ chuyển món sang `INACTIVE` (xóa mềm), không xóa vật lý.
 Hủy đơn cập nhật `CANCELLED`, giữ header và chi tiết.
 
-Unique/CHECK/FK không tự kiểm tra vai trò người xác nhận hoặc quyền sở hữu.
-Checkout cần giao dịch chung cho đơn, chi tiết, kho và dọn giỏ; hủy cần giao dịch
-chung cho trạng thái và hoàn kho. Mọi thao tác sửa giỏ phải tuân thủ cùng cơ chế
-khóa/version với checkout.
+Unique/FK không tự kiểm tra vai trò người xác nhận hoặc quyền sở hữu.
+Checkout dùng một giao dịch chung cho đơn, chi tiết, kho và dọn giỏ; hủy dùng
+một giao dịch chung cho trạng thái và hoàn kho. Vi phạm UNIQUE (ví dụ hai lần
+thêm món đầu tiên đồng thời cùng tạo giỏ) trả `409 CONFLICT`.
 
-Index hiện có phục vụ lọc món theo trạng thái/danh mục/giá/tên và lấy đơn theo
-người dùng/trạng thái/thời gian. Tìm kiếm `%keyword%` có thể cần quét dữ liệu;
-Stage 1 chưa thêm FULLTEXT, cache hay index nâng cao.
+Ngoài khóa chính, UNIQUE và index InnoDB tự tạo cho FK, phase 1 không thêm index
+tối ưu. Lọc món, tìm kiếm `%keyword%` và danh sách đơn có thể cần quét bảng;
+FULLTEXT, cache hay index nâng cao để dành cho phase 2.
+
+### Giới hạn phase 1
+
+Phase 1 không khóa hàng (`SELECT … FOR UPDATE`) và không dùng khóa lạc quan
+(`version`). Vì vậy:
+
+- Checkout đồng thời có thể bán vượt kho do lost update: hai giao dịch cùng đọc một
+  tồn kho rồi cùng ghi `stock - qty`. `stock_quantity` không bị âm vì service kiểm tra
+  `stock >= qty` trước khi ghi giá trị tuyệt đối.
+- Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể hoàn kho hai lần.
+- Admin sửa món đồng thời với checkout có thể ghi đè tồn kho.
+
+Các điểm này để dành cho phase 2 và là mục tiêu đo trước/sau cải tiến.
 
 ## Khởi tạo và dữ liệu mẫu
 
@@ -109,9 +131,9 @@ Stage 1 chưa thêm FULLTEXT, cache hay index nâng cao.
 Mật khẩu mẫu `ByteMeDemo!2026`, lưu BCrypt. Các đơn lịch sử có snapshot giá cũ.
 
 Docker khởi tạo schema khi MySQL tạo volume mới. Với database có sẵn, có thể
-chạy `schema.sql` bằng MySQL client: script tạo bảng còn thiếu và view, không tự
-thay đổi cấu trúc bảng đã tồn tại. Thay đổi cấu trúc sau này dùng SQL thủ công.
-Seed chỉ chạy một lần trên database rỗng, trong một giao dịch; không tự nạp khi
-backend khởi động. Xem lệnh nạp seed trong [README](../README.md).
+chạy `schema.sql` bằng MySQL client: script tạo bảng còn thiếu, không tự
+thay đổi cấu trúc bảng đã tồn tại (database tạo từ schema cũ cần tạo lại volume). Thay đổi cấu trúc sau này dùng SQL thủ công.
+Seed chạy trong một giao dịch, chỉ dùng cho database rỗng: chạy lại sẽ lỗi trùng khóa
+chính và không nạp thêm gì. Seed không tự nạp khi backend khởi động. Xem lệnh nạp seed trong [README](../README.md).
 
-Chạy `.\mvnw.cmd verify` để kiểm tra trên MySQL riêng qua Testcontainers.
+Chạy `./mvnw test` (cần Docker) để kiểm tra trên MySQL riêng qua Testcontainers.

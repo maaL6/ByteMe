@@ -27,35 +27,35 @@ VALUES
     (6, 'Tráng miệng', 'Chè và bánh ngọt.', '2026-09-01 00:00:00', '2026-09-01 00:00:00');
 
 INSERT INTO `foods`
-    (`id`, `category_id`, `name`, `description`, `price`, `image_url`, `stock_quantity`, `status`, `version`, `created_at`, `updated_at`)
+    (`id`, `category_id`, `name`, `description`, `price`, `image_url`, `stock_quantity`, `status`, `created_at`, `updated_at`)
 VALUES
-    (1, 1, 'Phở bò tái', 'Bánh phở mềm, thịt bò tái và nước dùng ninh xương.', 65000.00, NULL, 38, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (2, 1, 'Phở gà', 'Phở gà ta với hành lá và lá chanh.', 60000.00, NULL, 45, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (3, 1, 'Bún chả Hà Nội', 'Bún, chả nướng và nước chấm chua ngọt.', 70000.00, NULL, 30, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (4, 3, 'Bánh mì bò', 'Bánh mì giòn với bò xào và rau thơm.', 35000.00, NULL, 50, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (5, 5, 'Trà đào', 'Trà đen, đào ngâm và đá.', 25000.00, NULL, 60, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (6, 6, 'Chè sen', 'Chè hạt sen thanh mát; hiện hết phần trong ngày.', 30000.00, NULL, 0, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 02:00:00'),
-    (7, 2, 'Cơm tấm sườn', 'Cơm tấm, sườn nướng, đồ chua và mỡ hành.', 55000.00, NULL, 55, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (8, 2, 'Cơm gà xối mỡ', 'Cơm với đùi gà chiên giòn và dưa leo.', 60000.00, NULL, 35, 'ACTIVE', 1, '2026-09-01 00:00:00', '2026-09-28 00:00:00'),
-    (9, 1, 'Bún thịt nướng', 'Bún trộn với thịt nướng và đậu phộng.', 50000.00, NULL, 48, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (10, 3, 'Bánh mì thịt', 'Bánh mì thịt nguội, pa tê và đồ chua.', 25000.00, NULL, 70, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (11, 5, 'Cà phê sữa đá', 'Cà phê phin pha sữa đặc.', 22000.00, NULL, 100, 'ACTIVE', 1, '2026-09-01 00:00:00', '2026-09-28 00:00:00'),
-    (12, 6, 'Bánh flan', 'Bánh flan caramel; đã ngừng bán.', 18000.00, NULL, 0, 'INACTIVE', 1, '2026-09-01 00:00:00', '2026-09-28 00:00:00'),
-    (13, 4, 'Cơm chay', 'Cơm, nấm kho và rau theo mùa.', 45000.00, NULL, 40, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (14, 5, 'Trà đào ít đường', 'Trà đào ít đường, phù hợp với thực đơn của nhà hàng ByteMe.', 20000.00, NULL, 80, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (15, 4, 'Bún riêu chay', 'Bún nước cà chua, đậu hũ và nấm.', 50000.00, NULL, 30, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (16, 3, 'Bánh mì chay', 'Bánh mì nhân nấm, đậu hũ và rau.', 28000.00, NULL, 45, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (17, 5, 'Sữa đậu nành', 'Sữa đậu nành nguyên chất.', 18000.00, NULL, 70, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
-    (18, 6, 'Chè đậu xanh', 'Chè đậu xanh với nước cốt dừa.', 25000.00, NULL, 50, 'ACTIVE', 0, '2026-09-01 00:00:00', '2026-09-30 00:00:00');
+    (1, 1, 'Phở bò tái', 'Bánh phở mềm, thịt bò tái và nước dùng ninh xương.', 65000.00, NULL, 38, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (2, 1, 'Phở gà', 'Phở gà ta với hành lá và lá chanh.', 60000.00, NULL, 45, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (3, 1, 'Bún chả Hà Nội', 'Bún, chả nướng và nước chấm chua ngọt.', 70000.00, NULL, 30, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (4, 3, 'Bánh mì bò', 'Bánh mì giòn với bò xào và rau thơm.', 35000.00, NULL, 50, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (5, 5, 'Trà đào', 'Trà đen, đào ngâm và đá.', 25000.00, NULL, 60, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (6, 6, 'Chè sen', 'Chè hạt sen thanh mát; hiện hết phần trong ngày.', 30000.00, NULL, 0, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 02:00:00'),
+    (7, 2, 'Cơm tấm sườn', 'Cơm tấm, sườn nướng, đồ chua và mỡ hành.', 55000.00, NULL, 55, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (8, 2, 'Cơm gà xối mỡ', 'Cơm với đùi gà chiên giòn và dưa leo.', 60000.00, NULL, 35, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-28 00:00:00'),
+    (9, 1, 'Bún thịt nướng', 'Bún trộn với thịt nướng và đậu phộng.', 50000.00, NULL, 48, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (10, 3, 'Bánh mì thịt', 'Bánh mì thịt nguội, pa tê và đồ chua.', 25000.00, NULL, 70, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (11, 5, 'Cà phê sữa đá', 'Cà phê phin pha sữa đặc.', 22000.00, NULL, 100, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-28 00:00:00'),
+    (12, 6, 'Bánh flan', 'Bánh flan caramel; đã ngừng bán.', 18000.00, NULL, 0, 'INACTIVE', '2026-09-01 00:00:00', '2026-09-28 00:00:00'),
+    (13, 4, 'Cơm chay', 'Cơm, nấm kho và rau theo mùa.', 45000.00, NULL, 40, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (14, 5, 'Trà đào ít đường', 'Trà đào ít đường, phù hợp với thực đơn của nhà hàng ByteMe.', 20000.00, NULL, 80, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (15, 4, 'Bún riêu chay', 'Bún nước cà chua, đậu hũ và nấm.', 50000.00, NULL, 30, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (16, 3, 'Bánh mì chay', 'Bánh mì nhân nấm, đậu hũ và rau.', 28000.00, NULL, 45, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (17, 5, 'Sữa đậu nành', 'Sữa đậu nành nguyên chất.', 18000.00, NULL, 70, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00'),
+    (18, 6, 'Chè đậu xanh', 'Chè đậu xanh với nước cốt dừa.', 25000.00, NULL, 50, 'ACTIVE', '2026-09-01 00:00:00', '2026-09-30 00:00:00');
 
 INSERT INTO `carts`
-    (`id`, `user_id`, `version`, `created_at`, `updated_at`)
+    (`id`, `user_id`, `created_at`, `updated_at`)
 VALUES
-    (1, 4, 3, '2026-09-02 00:00:00', '2026-09-30 04:00:00'),
-    (2, 5, 3, '2026-09-02 00:00:00', '2026-09-30 04:00:00'),
-    (3, 6, 0, '2026-09-02 00:00:00', '2026-09-30 04:00:00'),
-    (4, 7, 0, '2026-09-03 00:00:00', '2026-09-03 00:00:00'),
-    (5, 8, 0, '2026-09-03 00:00:00', '2026-09-03 00:00:00');
+    (1, 4, '2026-09-02 00:00:00', '2026-09-30 04:00:00'),
+    (2, 5, '2026-09-02 00:00:00', '2026-09-30 04:00:00'),
+    (3, 6, '2026-09-02 00:00:00', '2026-09-30 04:00:00'),
+    (4, 7, '2026-09-03 00:00:00', '2026-09-03 00:00:00'),
+    (5, 8, '2026-09-03 00:00:00', '2026-09-03 00:00:00');
 
 INSERT INTO `cart_items`
     (`id`, `cart_id`, `food_id`, `quantity`, `created_at`, `updated_at`)
@@ -68,16 +68,16 @@ VALUES
     (6, 2, 10, 1, '2026-09-30 04:00:00', '2026-09-30 04:00:00');
 
 INSERT INTO `orders`
-    (`id`, `user_id`, `status`, `order_type`, `table_number`, `recipient_name`, `shipping_phone`, `shipping_address`, `payment_method`, `note`, `confirmed_by`, `confirmed_at`, `cancelled_at`, `completed_at`, `version`, `created_at`, `updated_at`)
+    (`id`, `user_id`, `status`, `order_type`, `table_number`, `recipient_name`, `shipping_phone`, `shipping_address`, `payment_method`, `note`, `confirmed_by`, `confirmed_at`, `cancelled_at`, `completed_at`, `created_at`, `updated_at`)
 VALUES
-    (1001, 4, 'PENDING', 'DELIVERY', NULL, 'Nguyễn Hoàng An', '0900000004', '10 Đường Khách Hàng, Hà Nội (địa chỉ mẫu)', 'COD', 'Gọi trước khi giao.', NULL, NULL, NULL, NULL, 0, '2026-09-30 03:00:00', '2026-09-30 03:00:00'),
-    (1002, 5, 'CONFIRMED', 'DINE_IN', 'B02', NULL, NULL, NULL, 'CASH', NULL, 2, '2026-09-30 03:00:00', NULL, NULL, 1, '2026-09-30 02:50:00', '2026-09-30 03:00:00'),
-    (1003, 6, 'PROCESSING', 'DINE_IN', 'B03', NULL, NULL, NULL, 'BANK_TRANSFER', 'Không dùng hành.', 3, '2026-09-30 02:05:00', NULL, NULL, 2, '2026-09-30 02:00:00', '2026-09-30 02:30:00'),
-    (1004, 4, 'SHIPPING', 'DELIVERY', NULL, 'Nguyễn Hoàng An', '0900000004', '10 Đường Khách Hàng, Hà Nội (địa chỉ mẫu)', 'COD', NULL, 2, '2026-09-30 01:05:00', NULL, NULL, 3, '2026-09-30 01:00:00', '2026-09-30 02:00:00'),
-    (1005, 5, 'COMPLETED', 'DINE_IN', 'B05', NULL, NULL, NULL, 'BANK_TRANSFER', NULL, 2, '2026-09-26 02:05:00', NULL, '2026-09-26 03:15:00', 4, '2026-09-26 02:00:00', '2026-09-26 03:15:00'),
-    (1006, 6, 'CANCELLED', 'DINE_IN', 'B06', NULL, NULL, NULL, 'CASH', 'Khách hủy khi đơn còn PENDING; đã hoàn tồn kho.', NULL, NULL, '2026-09-29 07:10:00', NULL, 1, '2026-09-29 07:00:00', '2026-09-29 07:10:00'),
-    (1007, 4, 'COMPLETED', 'DELIVERY', NULL, 'Nguyễn Hoàng An', '0900000004', 'Địa chỉ giao hàng cũ, Hà Nội (địa chỉ mẫu)', 'COD', 'Đơn lịch sử có giá cà phê cũ.', 3, '2026-09-27 03:03:00', NULL, '2026-09-27 04:00:00', 4, '2026-09-27 03:00:00', '2026-09-27 04:00:00'),
-    (1008, 5, 'PENDING', 'DELIVERY', NULL, 'Lê Thanh Bình', '0900000005', '20 Đường Khách Hàng, TP. Hồ Chí Minh (địa chỉ mẫu)', 'BANK_TRANSFER', 'Đơn giao tận nhà gồm món chính và tráng miệng.', NULL, NULL, NULL, NULL, 0, '2026-09-30 03:30:00', '2026-09-30 03:30:00');
+    (1001, 4, 'PENDING', 'DELIVERY', NULL, 'Nguyễn Hoàng An', '0900000004', '10 Đường Khách Hàng, Hà Nội (địa chỉ mẫu)', 'COD', 'Gọi trước khi giao.', NULL, NULL, NULL, NULL, '2026-09-30 03:00:00', '2026-09-30 03:00:00'),
+    (1002, 5, 'CONFIRMED', 'DINE_IN', 'B02', NULL, NULL, NULL, 'CASH', NULL, 2, '2026-09-30 03:00:00', NULL, NULL, '2026-09-30 02:50:00', '2026-09-30 03:00:00'),
+    (1003, 6, 'PROCESSING', 'DINE_IN', 'B03', NULL, NULL, NULL, 'BANK_TRANSFER', 'Không dùng hành.', 3, '2026-09-30 02:05:00', NULL, NULL, '2026-09-30 02:00:00', '2026-09-30 02:30:00'),
+    (1004, 4, 'SHIPPING', 'DELIVERY', NULL, 'Nguyễn Hoàng An', '0900000004', '10 Đường Khách Hàng, Hà Nội (địa chỉ mẫu)', 'COD', NULL, 2, '2026-09-30 01:05:00', NULL, NULL, '2026-09-30 01:00:00', '2026-09-30 02:00:00'),
+    (1005, 5, 'COMPLETED', 'DINE_IN', 'B05', NULL, NULL, NULL, 'BANK_TRANSFER', NULL, 2, '2026-09-26 02:05:00', NULL, '2026-09-26 03:15:00', '2026-09-26 02:00:00', '2026-09-26 03:15:00'),
+    (1006, 6, 'CANCELLED', 'DINE_IN', 'B06', NULL, NULL, NULL, 'CASH', 'Khách hủy khi đơn còn PENDING; đã hoàn tồn kho.', NULL, NULL, '2026-09-29 07:10:00', NULL, '2026-09-29 07:00:00', '2026-09-29 07:10:00'),
+    (1007, 4, 'COMPLETED', 'DELIVERY', NULL, 'Nguyễn Hoàng An', '0900000004', 'Địa chỉ giao hàng cũ, Hà Nội (địa chỉ mẫu)', 'COD', 'Đơn lịch sử có giá cà phê cũ.', 3, '2026-09-27 03:03:00', NULL, '2026-09-27 04:00:00', '2026-09-27 03:00:00', '2026-09-27 04:00:00'),
+    (1008, 5, 'PENDING', 'DELIVERY', NULL, 'Lê Thanh Bình', '0900000005', '20 Đường Khách Hàng, TP. Hồ Chí Minh (địa chỉ mẫu)', 'BANK_TRANSFER', 'Đơn giao tận nhà gồm món chính và tráng miệng.', NULL, NULL, NULL, NULL, '2026-09-30 03:30:00', '2026-09-30 03:30:00');
 
 INSERT INTO `order_items`
     (`id`, `order_id`, `food_id`, `food_name`, `unit_price`, `quantity`, `created_at`)

@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,13 +24,8 @@ import org.example.cart.dto.AddToCartRequest;
 import org.example.cart.dto.UpdateCartItemRequest;
 import org.example.cart.service.CartService;
 import org.example.common.BusinessException;
-import org.example.food.dto.FoodRequest;
-import org.example.food.repository.FoodRepository;
-import org.example.food.service.FoodService;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.example.order.dto.CreateOrderRequest;
 import org.example.order.domain.*;
-import org.example.order.entity.*;
 import org.example.order.service.OrderService;
 import org.example.shared.api.Role;
 import org.testcontainers.containers.MySQLContainer;
@@ -63,8 +57,6 @@ class OrderIntegrationTest {
     @Autowired OrderService service;
     @Autowired TransactionTemplate transactions;
     @MockitoSpyBean CartService carts;
-    @Autowired FoodService foodService;
-    @Autowired FoodRepository foodRepository;
 
     @BeforeEach void seed() {
         // This database belongs solely to this ephemeral test container.
@@ -81,8 +73,6 @@ class OrderIntegrationTest {
 
     @Test void checkoutPersistsSnapshotsUpdatesStockAndClearsCart() {
         int originalStock = stock(1);
-        long originalFoodVersion = foodVersion(1);
-        int originalCartVersion = db.queryForObject("SELECT version FROM carts WHERE id = 1", Integer.class);
         var order = service.create(CUSTOMER, dineIn());
         assertEquals(OrderStatus.PENDING, order.status());
         assertEquals("B05", order.tableNumber());
@@ -90,36 +80,15 @@ class OrderIntegrationTest {
         assertEquals(List.of(1L, 2L, 14L), order.items().stream().map(item -> item.foodId()).toList());
         int quantity = order.items().stream().filter(item -> item.foodId() == 1).findFirst().orElseThrow().quantity();
         assertEquals(originalStock - quantity, stock(1));
-        assertEquals(originalFoodVersion + 1, foodVersion(1));
         assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM cart_items WHERE cart_id = 1", Integer.class));
         assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM carts WHERE id = 1", Integer.class));
-        assertEquals(originalCartVersion + 1, db.queryForObject("SELECT version FROM carts WHERE id = 1", Integer.class));
-        assertEquals(0, order.totalAmount().compareTo(db.queryForObject(
-                "SELECT total_amount FROM order_totals WHERE order_id = ?", BigDecimal.class, order.id())));
+        assertEquals(0, order.totalAmount().compareTo(total(order.id())));
         assertEquals("DINE_IN", db.queryForObject("SELECT order_type FROM orders WHERE id = ?", String.class, order.id()));
-        assertEquals(0L, db.queryForObject("SELECT version FROM orders WHERE id = ?", Long.class, order.id()));
         db.update("UPDATE foods SET name = 'Tên mới sau checkout', price = price + 1000 WHERE id = 1");
         var read = service.get(CUSTOMER, Role.CUSTOMER, order.id());
         assertEquals(order.items(), read.items());
         assertEquals(order.totalAmount(), read.totalAmount());
         assertEquals(order.createdAt(), read.createdAt());
-    }
-
-    @Test void adminFoodEditLosesToCommittedCheckoutInsteadOfOverwritingStock() {
-        int originalStock = stock(1);
-        var edit = new FoodRequest(1L, "Phở bò tái", null, new BigDecimal("70000"), null, 100, null);
-        assertThrows(ObjectOptimisticLockingFailureException.class, () -> transactions.executeWithoutResult(status -> {
-            foodRepository.findById(1L).orElseThrow(); // admin đã đọc món với version cũ
-            try (var pool = Executors.newSingleThreadExecutor()) {
-                pool.submit(() -> service.create(CUSTOMER, dineIn())).get(15, TimeUnit.SECONDS);
-            } catch (Exception error) {
-                throw new IllegalStateException(error);
-            }
-            foodService.updateFood(1L, edit);
-        }));
-        assertEquals(originalStock - 2, stock(1));
-        assertEquals(0, new BigDecimal("65000.00").compareTo(
-                db.queryForObject("SELECT price FROM foods WHERE id = 1", BigDecimal.class)));
     }
 
     @Test void timestampsAreStoredAsUtcWallClock() {
@@ -137,7 +106,6 @@ class OrderIntegrationTest {
     @Test void cartClearFailureRollsBackHeaderItemsStockAndCart() {
         int originalStock = stock(1);
         int originalCartItems = db.queryForObject("SELECT COUNT(*) FROM cart_items WHERE cart_id = 1", Integer.class);
-        long originalVersion = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
         doAnswer(call -> {
             call.callRealMethod();
             throw new IllegalStateException("Synthetic cart failure");
@@ -147,7 +115,6 @@ class OrderIntegrationTest {
         assertEquals(16, db.queryForObject("SELECT COUNT(*) FROM order_items", Integer.class));
         assertEquals(originalStock, stock(1));
         assertEquals(originalCartItems, db.queryForObject("SELECT COUNT(*) FROM cart_items WHERE cart_id = 1", Integer.class));
-        assertEquals(originalVersion, db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class));
     }
 
     @Test void unavailableOrMissingFoodRollsBackEarlierReservations() {
@@ -186,7 +153,6 @@ class OrderIntegrationTest {
         assertEquals(OrderStatus.PROCESSING, service.updateStatus(EMPLOYEE, 1002, OrderStatus.PROCESSING).status());
         assertCode("INVALID_ORDER_TRANSITION", () -> service.updateStatus(EMPLOYEE, 1002, OrderStatus.SHIPPING));
         assertEquals(OrderStatus.COMPLETED, service.updateStatus(EMPLOYEE, 1002, OrderStatus.COMPLETED).status());
-        long version1008 = db.queryForObject("SELECT version FROM orders WHERE id = 1008", Long.class);
         var confirmed = service.confirm(EMPLOYEE, 1008);
         assertEquals(2L, confirmed.confirmedBy());
         assertNotNull(confirmed.confirmedAt());
@@ -195,7 +161,6 @@ class OrderIntegrationTest {
         assertNotNull(service.updateStatus(EMPLOYEE, 1008, OrderStatus.COMPLETED).completedAt());
         assertEquals("COMPLETED", db.queryForObject("SELECT status FROM orders WHERE id = 1008", String.class));
         assertEquals(2L, db.queryForObject("SELECT confirmed_by FROM orders WHERE id = 1008", Long.class));
-        assertEquals(version1008 + 4, db.queryForObject("SELECT version FROM orders WHERE id = 1008", Long.class));
     }
 
     @Test void employeeCancellationKeepsConfirmationAndRollsBackIfSavingFails() {
@@ -224,38 +189,33 @@ class OrderIntegrationTest {
         assertEquals("CANCELLED", db.queryForObject("SELECT status FROM orders WHERE id = 1001", String.class));
     }
 
-    @Test void concurrentCancellationRestoresStockExactlyOnce() throws Exception {
-        int originalStock = stock(1);
-        Callable<Boolean> cancel = () -> {
-            try { service.cancel(CUSTOMER, 1001); return true; }
-            catch (BusinessException error) { assertEquals("INVALID_ORDER_TRANSITION", error.code()); return false; }
-        };
-        assertExactlyOneSucceeds(race(cancel, cancel));
-        assertEquals(originalStock + 2, stock(1));
-        assertEquals(2, db.queryForObject("SELECT COUNT(*) FROM order_items WHERE order_id = 1001", Integer.class));
-    }
-
-    @Test void concurrentCheckoutCreatesOnlyOneOrderFromSameCart() throws Exception {
-        int originalStock = stock(1);
-        Callable<Boolean> create = () -> {
-            try { service.create(CUSTOMER, dineIn()); return true; }
-            catch (BusinessException error) { assertEquals("EMPTY_CART", error.code()); return false; }
-        };
-        assertExactlyOneSucceeds(race(create, create));
-        assertEquals(9, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
-        assertEquals(originalStock - 2, stock(1));
-    }
-
     @Test void missingOrEmptyCartsDoNotCreateOrders() {
         db.update("DELETE FROM carts WHERE user_id = 6");
-        assertCode("CART_NOT_FOUND", () -> service.create(6, dineIn()));
+        assertCode("EMPTY_CART", () -> service.create(6, dineIn()));
+        assertEquals(0, cartRows(6));
         db.update("DELETE FROM cart_items WHERE cart_id = 1");
         assertCode("EMPTY_CART", () -> service.create(CUSTOMER, dineIn()));
         assertEquals(8, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
     }
 
+    @Test void userWithoutCartSeesEmptyCartAndReadsDoNotInsertRows() {
+        db.update("DELETE FROM carts WHERE user_id = 6");
+        var cart = carts.getCart(6L);
+        assertNull(cart.id());
+        assertEquals(6L, cart.userId());
+        assertTrue(cart.items().isEmpty());
+        assertEquals(0, cartRows(6));
+        assertEquals("CART_ITEM_NOT_FOUND", assertThrows(BusinessException.class,
+                () -> carts.updateCartItem(6L, 1L, new UpdateCartItemRequest(2))).code());
+        assertEquals("CART_ITEM_NOT_FOUND", assertThrows(BusinessException.class,
+                () -> carts.removeCartItem(6L, 1L)).code());
+        assertEquals(0, cartRows(6));
+        assertEquals(2, db.queryForObject("SELECT quantity FROM cart_items WHERE id = 1", Integer.class));
+        carts.addToCart(6L, add(5, 1));
+        assertEquals(1, cartRows(6));
+    }
+
     @Test void cartCrudFeedsDeliveryCheckoutAndProtectsOtherOwners() {
-        long version = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
         var cart = carts.addToCart(4L, add(5, 2));
         var tea = cart.items().stream().filter(item -> item.food().id() == 5).findFirst().orElseThrow();
         assertNotNull(tea.id());
@@ -267,7 +227,6 @@ class OrderIntegrationTest {
         assertEquals("CART_ITEM_NOT_FOUND", assertThrows(BusinessException.class,
                 () -> carts.updateCartItem(5L, tea.id(), update)).code());
         carts.removeCartItem(4L, 2L);
-        assertTrue(db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class) > version);
         int before = stock(5);
         var order = service.create(CUSTOMER, new CreateOrderRequest(
                 OrderType.DELIVERY, null, "Khách", "0900000004", "Địa chỉ", PaymentMethod.COD, null));
@@ -287,17 +246,15 @@ class OrderIntegrationTest {
         assertEquals(1, db.queryForObject("SELECT quantity FROM cart_items WHERE cart_id = 1 AND food_id = 2", Integer.class));
     }
 
-    @Test void cartVersionAndTimestampsComeFromMysql() {
+    @Test void cartTimestampsComeFromMysql() {
         db.update("DELETE FROM carts WHERE user_id = 6");
         carts.addToCart(6L, add(5, 1));
-        assertEquals(1L, db.queryForObject("SELECT version FROM carts WHERE user_id = 6", Long.class));
         var item = carts.getCart(6L).items().getFirst();
         var update = new UpdateCartItemRequest(4);
         carts.updateCartItem(6L, item.id(), update);
         carts.addToCart(6L, add(1, 1));
         carts.removeCartItem(6L, item.id());
-        assertEquals(4L, db.queryForObject("SELECT version FROM carts WHERE user_id = 6", Long.class));
-        // Cả created_at và updated_at đều do MySQL đặt, nên CHECK updated_at >= created_at luôn đúng.
+        // created_at và updated_at đều do MySQL đặt (DEFAULT / ON UPDATE), không lấy từ giờ JVM.
         assertEquals(Boolean.TRUE, db.queryForObject("""
                 SELECT updated_at >= created_at AND TIMESTAMPDIFF(SECOND, updated_at, NOW(6)) < 60
                 FROM carts WHERE user_id = 6""", Boolean.class));
@@ -306,107 +263,23 @@ class OrderIntegrationTest {
                 FROM cart_items ci JOIN carts c ON c.id = ci.cart_id WHERE c.user_id = 6""", Boolean.class));
     }
 
-    @Test void quantityOverflowDoesNotChangeCartOrVersion() {
+    @Test void quantityOverflowDoesNotChangeCart() {
         db.update("UPDATE cart_items SET quantity = ? WHERE id = 1", Integer.MAX_VALUE);
-        long version = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
         var error = assertThrows(BusinessException.class, () -> carts.addToCart(4L, add(1, 1)));
         assertEquals(BusinessException.Type.INVALID, error.type());
         assertEquals(Integer.MAX_VALUE, db.queryForObject("SELECT quantity FROM cart_items WHERE id = 1", Integer.class));
-        assertEquals(version, db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class));
-    }
-
-    @Test void concurrentFirstAdditionsCreateOneCartAndMergeQuantities() throws Exception {
-        db.update("DELETE FROM carts WHERE user_id = 6");
-        Callable<Boolean> add = () -> carts.addToCart(6L, add(5, 1)) != null;
-        race(add, add);
-        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = 6", Integer.class));
-        var items = carts.getCart(6L).items();
-        assertEquals(1, items.size());
-        assertEquals(2, items.getFirst().quantity());
-    }
-
-    @Test void concurrentCustomersCannotOversellLastFood() throws Exception {
-        db.update("DELETE FROM cart_items");
-        carts.addToCart(4L, add(1, 1));
-        carts.addToCart(5L, add(1, 1));
-        db.update("UPDATE foods SET stock_quantity = 1 WHERE id = 1");
-        assertExactlyOneSucceeds(race(() -> checkout(4), () -> checkout(5)));
-        assertEquals(0, stock(1));
-        assertEquals(9, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
-        assertEquals(1, db.queryForObject("SELECT COUNT(*) FROM cart_items", Integer.class));
-    }
-
-    @Test void additionsWaitForCheckoutAndRemainInTheNextCart() throws Exception {
-        var clearing = new CountDownLatch(1);
-        var release = new CountDownLatch(1);
-        var adding = new CountDownLatch(1);
-        var added = new CountDownLatch(1);
-        doAnswer(call -> {
-            clearing.countDown();
-            assertTrue(release.await(10, TimeUnit.SECONDS));
-            return call.callRealMethod();
-        }).when(cartTarget()).clearCart(anyLong());
-        try (var pool = Executors.newFixedThreadPool(2)) {
-            var checkout = pool.submit(() -> service.create(CUSTOMER, dineIn()));
-            try {
-                assertTrue(clearing.await(10, TimeUnit.SECONDS));
-                var addition = pool.submit(() -> {
-                    adding.countDown();
-                    var result = carts.addToCart(4L, add(5, 2));
-                    added.countDown();
-                    return result;
-                });
-                assertTrue(adding.await(5, TimeUnit.SECONDS));
-                assertFalse(added.await(250, TimeUnit.MILLISECONDS));
-                release.countDown();
-                assertFalse(checkout.get(15, TimeUnit.SECONDS).items().stream().anyMatch(item -> item.foodId() == 5));
-                var remaining = addition.get(15, TimeUnit.SECONDS).items();
-                assertEquals(1, remaining.size());
-                assertEquals(5L, remaining.getFirst().food().id());
-                assertEquals(2, remaining.getFirst().quantity());
-            } finally {
-                release.countDown();
-            }
-        }
     }
 
     @Test void cartWriteAndCheckoutRollBackTogether() {
         int before = stock(5);
-        long version = db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class);
         assertThrows(IllegalStateException.class, () -> transactions.executeWithoutResult(status -> {
             carts.addToCart(4L, add(5, 2));
             service.create(CUSTOMER, dineIn());
             throw new IllegalStateException("rollback cart and checkout");
         }));
         assertEquals(before, stock(5));
-        assertEquals(version, db.queryForObject("SELECT version FROM carts WHERE id = 1", Long.class));
         assertEquals(3, carts.getCart(4L).items().size());
         assertEquals(8, db.queryForObject("SELECT COUNT(*) FROM orders", Integer.class));
-    }
-
-    /** Mở cùng lúc hai tác vụ trên hai luồng và trả kết quả của chúng. */
-    private static <T> List<T> race(Callable<T> first, Callable<T> second) throws Exception {
-        var gate = new CountDownLatch(1);
-        try (var pool = Executors.newFixedThreadPool(2)) {
-            var a = pool.submit(() -> { gate.await(); return first.call(); });
-            var b = pool.submit(() -> { gate.await(); return second.call(); });
-            gate.countDown();
-            return List.of(a.get(15, TimeUnit.SECONDS), b.get(15, TimeUnit.SECONDS));
-        }
-    }
-
-    private static void assertExactlyOneSucceeds(List<Boolean> results) {
-        assertEquals(1, results.stream().filter(ok -> ok).count(), "đúng một trong hai tác vụ thành công");
-    }
-
-    private boolean checkout(long userId) {
-        try {
-            service.create(userId, dineIn());
-            return true;
-        } catch (BusinessException error) {
-            assertEquals("INSUFFICIENT_STOCK", error.code());
-            return false;
-        }
     }
 
     private static AddToCartRequest add(long foodId, int quantity) {
@@ -415,5 +288,12 @@ class OrderIntegrationTest {
 
     private int stock(long id) { return db.queryForObject("SELECT stock_quantity FROM foods WHERE id = ?", Integer.class, id); }
 
-    private long foodVersion(long id) { return db.queryForObject("SELECT version FROM foods WHERE id = ?", Long.class, id); }
+    private int cartRows(long userId) {
+        return db.queryForObject("SELECT COUNT(*) FROM carts WHERE user_id = ?", Integer.class, userId);
+    }
+
+    private BigDecimal total(long orderId) {
+        return db.queryForObject("SELECT COALESCE(SUM(unit_price * quantity), 0) FROM order_items WHERE order_id = ?",
+                BigDecimal.class, orderId);
+    }
 }

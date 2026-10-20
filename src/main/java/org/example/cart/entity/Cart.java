@@ -5,10 +5,7 @@ import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * created_at/updated_at/version do MySQL quản lý (một đồng hồ duy nhất), nên không map ở đây.
- * Mọi thao tác ghi giỏ đều khóa hàng carts trước (CartRepository.lockByUserId) nên không cần @Version.
- */
+/** created_at/updated_at do MySQL tự đặt (DEFAULT / ON UPDATE CURRENT_TIMESTAMP), không map ở đây. */
 @Entity
 @Table(name = "carts")
 @Getter
@@ -25,6 +22,7 @@ public class Cart {
     private Long userId;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id")
     @Builder.Default
     private List<CartItem> items = new ArrayList<>();
 }

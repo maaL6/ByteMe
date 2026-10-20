@@ -27,6 +27,11 @@ mkdir -p kaggle/dataset
 cp target/application.jar src/main/resources/db/schema.sql src/main/resources/db/seed.sql kaggle/dataset/
 ```
 
+> **Lưu ý:** schema đã được rút gọn cho phase 1 (bỏ cột `version`, CHECK, cột generated,
+> view `order_totals` và các index tối ưu). Nếu đã có dataset `byteme-dataset` từ trước,
+> phải build lại jar và **upload lại cả ba file** `application.jar`, `schema.sql`, `seed.sql`
+> (Kaggle: mở dataset ➔ **New Version**) để jar và schema cùng phiên bản; jar cũ vẫn ánh xạ cột `version` nên lỗi với schema mới.
+
 ### 1. Upload Dataset lên Kaggle
 1. Vào [Kaggle Datasets](https://www.kaggle.com/datasets) ➔ Nhấn **New Dataset**.
 2. Đặt tên Dataset: `byteme-dataset`.

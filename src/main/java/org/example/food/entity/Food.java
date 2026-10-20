@@ -24,10 +24,6 @@ public class Food {
     @Column(nullable = false, length = 150)
     private String name;
 
-    // Cột sinh tự động LOWER(TRIM(name)) trong MySQL; dùng để kiểm tra trùng tên toàn menu.
-    @Column(name = "normalized_name", insertable = false, updatable = false)
-    private String normalizedName;
-
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -42,10 +38,4 @@ public class Food {
 
     @Column(nullable = false, length = 20)
     private String status;
-
-    // Khóa lạc quan: admin sửa món đúng lúc checkout trừ kho thì bên ghi sau nhận 409.
-    // Để null khi tạo mới: Spring Data dùng version == null để chọn persist; Hibernate tự gán 0.
-    @Version
-    @Column(nullable = false)
-    private Long version;
 }
