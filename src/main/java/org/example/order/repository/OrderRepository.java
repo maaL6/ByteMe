@@ -1,9 +1,9 @@
 package org.example.order.repository;
 
 import jakarta.persistence.LockModeType;
+import org.example.order.domain.OrderStatus;
+import org.example.order.domain.OrderType;
 import org.example.order.entity.Order;
-import org.example.order.entity.OrderStatus;
-import org.example.order.entity.OrderType;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

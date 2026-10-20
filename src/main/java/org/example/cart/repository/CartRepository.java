@@ -25,4 +25,10 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     @Query(value = "UPDATE carts SET version = version + 1, updated_at = CURRENT_TIMESTAMP(6) WHERE id = :cartId",
             nativeQuery = true)
     void touch(Long cartId);
+
+    /** Ghi các item đã thêm/sửa/xóa (flush để item mới có id) rồi đánh dấu giỏ vừa thay đổi. */
+    default void saveChanges(Cart cart) {
+        saveAndFlush(cart);
+        touch(cart.getId());
+    }
 }

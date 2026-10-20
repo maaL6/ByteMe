@@ -1,9 +1,9 @@
 package org.example.order.dto;
 
+import org.example.order.domain.OrderStatus;
+import org.example.order.domain.OrderType;
+import org.example.order.domain.PaymentMethod;
 import org.example.order.entity.Order;
-import org.example.order.entity.OrderStatus;
-import org.example.order.entity.OrderType;
-import org.example.order.entity.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.time.Instant;

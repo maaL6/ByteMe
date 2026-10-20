@@ -1,13 +1,14 @@
 package org.example.order.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.common.CurrentUser;
 import org.example.order.dto.CreateOrderRequest;
 import org.example.order.dto.OrderDto;
 import org.example.order.dto.OrderPage;
 import org.example.order.dto.StatusRequest;
-import org.example.order.entity.OrderStatus;
-import org.example.order.entity.OrderType;
+import org.example.order.domain.OrderStatus;
+import org.example.order.domain.OrderType;
 import org.example.order.service.OrderService;
 import org.example.shared.api.AuthenticatedUser;
 import org.springframework.http.CacheControl;
@@ -28,7 +29,7 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderDto> create(@AuthenticationPrincipal AuthenticatedUser user,
-            @RequestBody CreateOrderRequest request) {
+            @Valid @RequestBody CreateOrderRequest request) {
         OrderDto order = orderService.create(CurrentUser.id(user), request);
         return ResponseEntity.created(URI.create("/api/orders/" + order.id()))
                 .cacheControl(CacheControl.noStore()).body(order);
@@ -59,7 +60,7 @@ public class OrderController {
 
     @PutMapping("/{orderId}/status")
     public ResponseEntity<OrderDto> updateStatus(@AuthenticationPrincipal AuthenticatedUser user,
-            @PathVariable long orderId, @RequestBody StatusRequest request) {
+            @PathVariable long orderId, @Valid @RequestBody StatusRequest request) {
         return ok(orderService.updateStatus(CurrentUser.id(user), orderId, request.status()));
     }
 

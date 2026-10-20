@@ -22,8 +22,8 @@ Mọi module dùng cùng một kiểu phân tầng; quy tắc được `src/test
 | Tầng | Package | Trách nhiệm | Được phép phụ thuộc |
 | --- | --- | --- | --- |
 | Bảo mật | `config.SecurityConfiguration`, `platform.security` | Xác thực JWT, phân quyền endpoint theo vai trò, giới hạn đăng nhập | Spring Security |
-| API | `<module>.controller`, `<module>.dto` | Nhận/trả JSON, `@Valid` cho dữ liệu đơn giản (Food/Cart), lấy user từ JWT (`CurrentUser.id`) | Service, DTO, enum của module, `shared.api`, Spring Web |
-| Nghiệp vụ | `<module>.service` | Quy tắc nghiệp vụ (Order kiểm tra cả dữ liệu tạo đơn ở đây vì quy tắc phụ thuộc DINE_IN/DELIVERY), ranh giới transaction (`@Transactional`), ném `BusinessException` | Repository/entity của chính module, service/dto của module khác. **Không** import Spring Web/HTTP, Servlet, Spring Data, JDBC, JPA, Hibernate |
+| API | `<module>.controller`, `<module>.dto` | Nhận/trả JSON, `@Valid` kiểm tra trường bắt buộc/độ dài (Food/Cart/Order), lấy user từ JWT (`CurrentUser.id`) | Service, DTO, enum của module, `shared.api`, Spring Web |
+| Nghiệp vụ | `<module>.service` | Quy tắc nghiệp vụ (Order kiểm tra trường bắt buộc theo DINE_IN/DELIVERY và phương thức thanh toán), ranh giới transaction (`@Transactional`), ném `BusinessException` | Repository/entity của chính module, service/dto của module khác. **Không** import Spring Web/HTTP, Servlet, Spring Data, JDBC, JPA, Hibernate |
 | Truy cập dữ liệu | `<module>.repository`, `<module>.entity` | Spring Data JPA, khóa hàng (`@Lock(PESSIMISTIC_WRITE)`), khóa lạc quan (`@Version`) | JPA/Hibernate, MySQL |
 | Dùng chung | `common`, `shared.api` | `BusinessException`, `CurrentUser`, `ApiError`, `GlobalErrors`; `AuthenticatedUser`, `Role` | — |
 
@@ -117,8 +117,9 @@ sequenceDiagram
     else Hợp lệ
         Sec->>API: AuthenticatedUser(userId, role)
         API->>API: CurrentUser.id(user) — subject phải là ID số (nếu không: 403)
+        API->>API: @Valid: orderType, paymentMethod bắt buộc, độ dài trường (sai: 400 VALIDATION_ERROR)
         API->>Order: create(customerId, request) — @Transactional bắt đầu
-        Order->>Order: validate: orderType, paymentMethod, DINE_IN/DELIVERY, độ dài trường
+        Order->>Order: quy tắc DINE_IN/DELIVERY: số bàn/thông tin giao hàng, phương thức thanh toán
         alt Dữ liệu không hợp lệ
             Order-->>Customer: 400 VALIDATION_ERROR (chưa có truy vấn DB nào)
         else Hợp lệ

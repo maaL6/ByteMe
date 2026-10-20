@@ -2,6 +2,9 @@ package org.example.order.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.order.domain.OrderStatus;
+import org.example.order.domain.OrderType;
+import org.example.order.domain.PaymentMethod;
 
 import java.time.Instant;
 import java.util.ArrayList;

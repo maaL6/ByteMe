@@ -1,3 +1,3 @@
-package org.example.order.entity;
+package org.example.order.domain;
 
 public enum OrderType { DINE_IN, DELIVERY }

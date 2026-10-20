@@ -4,7 +4,9 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.jpa.repository.JpaRepository;
 
+import static com.tngtech.archunit.base.DescribedPredicate.describe;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /** Kiểm tra tự động các quy tắc kiến trúc mô tả trong README. */
@@ -20,6 +22,16 @@ class ArchitectureTest {
                         "org.springframework.data..", "org.springframework.jdbc..", "org.springframework.orm..",
                         "jakarta.persistence..", "org.hibernate..", "java.sql..")
                 .because("tầng nghiệp vụ không import framework web hay thư viện DB (docs/2026.md)")
+                .check(CLASSES);
+    }
+
+    /** Repository của module vẫn kế thừa JpaRepository; service chỉ được dùng các thao tác kiểu CRUD. */
+    @Test void businessLayerDoesNotCallJpaSpecificRepositoryMethods() {
+        noClasses().that().resideInAPackage("..service..")
+                .should().callMethodWhere(describe("phương thức khai báo trong JpaRepository (flush, saveAndFlush...)",
+                        call -> call.getTarget().resolveMember()
+                                .map(method -> method.getOwner().isEquivalentTo(JpaRepository.class)).orElse(false)))
+                .because("flush/batch là khái niệm của ORM; gói chúng trong repository (vd CartRepository.saveChanges)")
                 .check(CLASSES);
     }
 

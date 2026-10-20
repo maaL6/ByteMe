@@ -30,6 +30,7 @@ import org.example.food.repository.FoodRepository;
 import org.example.food.service.FoodService;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.example.order.dto.CreateOrderRequest;
+import org.example.order.domain.*;
 import org.example.order.entity.*;
 import org.example.order.service.OrderService;
 import org.example.shared.api.Role;

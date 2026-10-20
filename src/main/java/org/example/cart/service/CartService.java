@@ -59,7 +59,7 @@ public class CartService {
             cart.getItems().add(newItem);
         }
 
-        saveChanges(cart);
+        cartRepository.saveChanges(cart);
         return toCartDto(cart);
     }
 
@@ -73,7 +73,7 @@ public class CartService {
                 .orElseThrow(CartService::cartItemNotFound);
 
         cartItem.setQuantity(request.quantity());
-        saveChanges(cart);
+        cartRepository.saveChanges(cart);
         return toCartDto(cart);
     }
 
@@ -86,7 +86,7 @@ public class CartService {
             throw cartItemNotFound();
         }
 
-        saveChanges(cart);
+        cartRepository.saveChanges(cart);
         return toCartDto(cart);
     }
 
@@ -109,17 +109,11 @@ public class CartService {
     public void clearCart(long userId) {
         Cart cart = lockCart(userId);
         cart.getItems().clear();
-        saveChanges(cart);
+        cartRepository.saveChanges(cart);
     }
 
     private Cart lockCart(long userId) {
         return cartRepository.lockByUserId(userId).orElseThrow(CartService::cartNotFound);
-    }
-
-    /** Ghi các item đã thêm/sửa/xóa (flush để item mới có id) rồi đánh dấu giỏ vừa thay đổi. */
-    private void saveChanges(Cart cart) {
-        cartRepository.saveAndFlush(cart);
-        cartRepository.touch(cart.getId());
     }
 
     private CartDto toCartDto(Cart cart) {
