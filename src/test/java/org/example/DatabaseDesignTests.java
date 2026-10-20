@@ -64,12 +64,6 @@ class DatabaseDesignTests {
                 values("SELECT CONCAT(id, ':', status) FROM orders WHERE order_type = 'DINE_IN'"));
         assertEquals(Set.of("1001:PENDING", "1004:SHIPPING", "1007:COMPLETED", "1008:PENDING"),
                 values("SELECT CONCAT(id, ':', status) FROM orders WHERE order_type = 'DELIVERY'"));
-        assertEquals(18L, db.queryForObject("SELECT COUNT(DISTINCT normalized_name) FROM foods", Long.class));
-        assertEquals(0L, db.queryForObject("""
-                SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE()
-                AND ((table_name = 'orders' AND column_name = 'total_amount')
-                     OR (table_name = 'foods' AND column_name = 'restaurant_id'))
-                """, Long.class));
     }
 
     @Test

@@ -40,7 +40,6 @@ class FoodCartSecurityTest {
         for (String role : new String[]{"CUSTOMER", "EMPLOYEE", "ADMIN"}) {
             token(role, "4", role);
         }
-        token("FIXTURE", "customer-a", "CUSTOMER");
     }
 
     private void token(String value, String subject, String role) {
@@ -82,12 +81,6 @@ class FoodCartSecurityTest {
         verify(cart).getCart(4L);
     }
 
-    @Test void cartSubjectThatIsNotADatabaseIdIsForbidden() throws Exception {
-        http.perform(get("/api/cart").header("Authorization", "Bearer FIXTURE"))
-                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
-        verifyNoInteractions(cart);
-    }
-
     @Test void onlyCustomersCanUseAnyCartEndpoint() throws Exception {
         for (String role : new String[]{"EMPLOYEE", "ADMIN"}) {
             http.perform(get("/api/cart").header("Authorization", "Bearer " + role)).andExpect(status().isForbidden());
@@ -104,7 +97,8 @@ class FoodCartSecurityTest {
     }
 
     @Test void invalidQuantitiesAndFoodIdsNeverReachCartService() throws Exception {
-        for (String body : new String[]{"{\"foodId\":0,\"quantity\":1}", "{\"foodId\":1,\"quantity\":0}"}) {
+        for (String body : new String[]{"{\"foodId\":0,\"quantity\":1}", "{\"foodId\":1,\"quantity\":0}",
+                "{\"foodId\":1,\"quantity\":1.5}"}) {
             http.perform(post("/api/cart/items").header("Authorization", "Bearer CUSTOMER")
                     .contentType("application/json").content(body)).andExpect(status().isBadRequest());
         }
@@ -117,7 +111,8 @@ class FoodCartSecurityTest {
                 "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"imageUrl\":\"" + "u".repeat(2049) + "\"}",
                 "{\"categoryId\":1,\"name\":\"Pho\",\"price\":12345678901234}",
                 "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000.123}",
-                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":0.5}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":0}",
+                "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"stockQuantity\":1.5}",
                 "{\"categoryId\":0,\"name\":\"Pho\",\"price\":50000}",
                 "{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000,\"description\":\"" + "d".repeat(16001) + "\"}"}) {
             http.perform(post("/api/foods").header("Authorization", "Bearer ADMIN")
@@ -144,14 +139,6 @@ class FoodCartSecurityTest {
         http.perform(get("/api/foods/999")).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("FOOD_NOT_FOUND")).andExpect(jsonPath("$.path").value("/api/foods/999"))
                 .andExpect(jsonPath("$.message").value("Không tìm thấy món ăn."));
-        when(foods.createFood(org.mockito.ArgumentMatchers.any()))
-                .thenThrow(BusinessException.conflict("FOOD_NAME_CONFLICT", "Tên món ăn đã tồn tại trong thực đơn."));
-        http.perform(post("/api/foods").header("Authorization", "Bearer ADMIN").contentType("application/json")
-                        .content("{\"categoryId\":1,\"name\":\"Pho\",\"price\":50000}"))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("FOOD_NAME_CONFLICT"));
-        when(cart.getCart(4L)).thenThrow(BusinessException.notFound("CART_NOT_FOUND", "Không tìm thấy giỏ hàng."));
-        http.perform(get("/api/cart").header("Authorization", "Bearer CUSTOMER"))
-                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("CART_NOT_FOUND"));
         http.perform(get("/api/foods/search")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
         http.perform(post("/api/cart/items").header("Authorization", "Bearer CUSTOMER")

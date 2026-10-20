@@ -14,6 +14,7 @@ import org.example.food.service.FoodService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
@@ -36,24 +37,24 @@ public class CartService {
     public CartDto addToCart(long userId, AddToCartRequest request) {
         cartRepository.ensureExists(userId);
         Cart cart = lockCart(userId);
-        FoodDto food = foodService.getAvailableFood(request.getFoodId());
+        FoodDto food = foodService.getAvailableFood(request.foodId());
 
         Optional<CartItem> existingItem = cart.getItems().stream()
-                .filter(item -> item.getFoodId().equals(food.getId()))
+                .filter(item -> item.getFoodId().equals(food.id()))
                 .findFirst();
 
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
             try {
-                item.setQuantity(Math.addExact(item.getQuantity(), request.getQuantity()));
+                item.setQuantity(Math.addExact(item.getQuantity(), request.quantity()));
             } catch (ArithmeticException error) {
                 throw BusinessException.invalid("VALIDATION_ERROR", "Số lượng quá lớn.");
             }
         } else {
             CartItem newItem = CartItem.builder()
                     .cart(cart)
-                    .foodId(food.getId())
-                    .quantity(request.getQuantity())
+                    .foodId(food.id())
+                    .quantity(request.quantity())
                     .build();
             cart.getItems().add(newItem);
         }
@@ -71,7 +72,7 @@ public class CartService {
                 .findFirst()
                 .orElseThrow(CartService::cartItemNotFound);
 
-        cartItem.setQuantity(request.getQuantity());
+        cartItem.setQuantity(request.quantity());
         saveChanges(cart);
         return toCartDto(cart);
     }
@@ -124,17 +125,10 @@ public class CartService {
     private CartDto toCartDto(Cart cart) {
         Map<Long, FoodDto> foods = foodService.findByIds(
                 cart.getItems().stream().map(CartItem::getFoodId).toList());
-        return CartDto.builder()
-                .id(cart.getId())
-                .userId(cart.getUserId())
-                .items(cart.getItems().stream()
-                        .map(item -> CartItemDto.builder()
-                                .id(item.getId())
-                                .food(foods.get(item.getFoodId()))
-                                .quantity(item.getQuantity())
-                                .build())
-                        .toList())
-                .build();
+        List<CartItemDto> items = cart.getItems().stream()
+                .map(item -> new CartItemDto(item.getId(), foods.get(item.getFoodId()), item.getQuantity()))
+                .toList();
+        return new CartDto(cart.getId(), cart.getUserId(), items);
     }
 
     private static BusinessException cartNotFound() {

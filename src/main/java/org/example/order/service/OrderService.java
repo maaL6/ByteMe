@@ -65,10 +65,9 @@ public class OrderService {
             order.getItems().add(OrderItem.builder()
                     .order(order)
                     .foodId(foodId)
-                    .foodName(food.getName())
-                    .unitPrice(food.getPrice())
+                    .foodName(food.name())
+                    .unitPrice(food.price())
                     .quantity(quantity)
-                    .createdAt(now)
                     .build());
         });
         Order saved = orders.save(order);

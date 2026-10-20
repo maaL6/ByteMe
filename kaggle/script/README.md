@@ -4,15 +4,13 @@ Dự án đã được phân chia rõ ràng thành 2 thư mục:
 
 ```
 kaggle/
-├── dataset/             <--- Thư mục dùng để upload tạo Kaggle Dataset
+├── dataset/             <--- Thư mục dùng để upload tạo Kaggle Dataset (không commit, tạo ở bước 0)
 │   ├── application.jar  (Spring Boot Java 21 build artifact)
-│   ├── schema.sql       (Cấu trúc bảng DB)
-│   └── seed.sql         (Dữ liệu mẫu: món ăn, tài khoản test)
+│   ├── schema.sql       (bản sao src/main/resources/db/schema.sql)
+│   └── seed.sql         (bản sao src/main/resources/db/seed.sql)
 │
 └── script/              <--- Các kịch bản test & notebook
-    ├── byteme_kaggle_benchmark.ipynb  (Jupyter Notebook chạy trực tiếp trên Kaggle)
-    ├── setup_and_run.sh               (Bash script tự động cài DB, java, k6, start server)
-    ├── load_test_k6.js                (Kịch bản test tải k6)
+    ├── byteme_kaggle_benchmark.ipynb  (Notebook: cài MySQL/Java/k6, chạy server, chạy k6, vẽ biểu đồ)
     └── README.md                      (File hướng dẫn này)
 ```
 
@@ -20,12 +18,13 @@ kaggle/
 
 ## 🚀 Hướng Dẫn Sử Dụng Nhanh
 
-### 0. Build `application.jar`
-File jar không được commit vào git. Build từ code hiện tại rồi copy vào thư mục dataset:
+### 0. Chuẩn bị thư mục dataset
+Các file trong `kaggle/dataset/` không được commit. Build jar từ code hiện tại rồi copy cùng schema/seed:
 
 ```sh
 ./mvnw -DskipTests package
-cp target/application.jar kaggle/dataset/application.jar
+mkdir -p kaggle/dataset
+cp target/application.jar src/main/resources/db/schema.sql src/main/resources/db/seed.sql kaggle/dataset/
 ```
 
 ### 1. Upload Dataset lên Kaggle

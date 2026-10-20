@@ -145,5 +145,19 @@ CLI thử nghiệm `LocalTokenCli` nằm trong `src/test/java/org/example/dev/`,
 
 Dùng JWT đăng nhập thật cho cả Cart và Order; không dùng `X-User-Id`. Subject của JWT
 phải là ID tài khoản trong database, nếu không API Cart/Order trả 403.
-POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/orders`
-với thông tin bàn hoặc giao hàng. Xem request mẫu và quy tắc tại [Order API](docs/order-api.md).
+POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/orders`:
+
+```json
+{ "orderType": "DINE_IN", "tableNumber": "B05", "paymentMethod": "CASH", "note": "Ít cay" }
+{ "orderType": "DELIVERY", "recipientName": "An", "shippingPhone": "0900000004",
+  "shippingAddress": "12 Nguyễn Văn Cừ", "paymentMethod": "COD" }
+```
+
+- DINE_IN dùng CASH/BANK_TRANSFER, DELIVERY dùng COD/BANK_TRANSFER; client không gửi món, giá hay userId.
+- Enum phải gửi bằng tên (`DINE_IN`, `CASH`...); số hoặc chuỗi số trả 400.
+- `GET /api/orders`: `page` mặc định 0, `size` mặc định 20 (1–100), sắp xếp mới nhất trước.
+  Khách thấy mọi đơn của mình; nhân viên mặc định thấy PENDING/CONFIRMED/PROCESSING/SHIPPING.
+- Sau checkout giỏ vẫn còn nhưng rỗng. Chưa có idempotency key: gửi lại POST trên giỏ đã dọn trả `EMPTY_CART`.
+
+Request/response đầy đủ xem Swagger UI; luồng khóa và trạng thái xem
+[docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md).

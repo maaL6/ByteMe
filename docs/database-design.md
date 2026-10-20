@@ -114,5 +114,4 @@ thay đổi cấu trúc bảng đã tồn tại. Thay đổi cấu trúc sau nà
 Seed chỉ chạy một lần trên database rỗng, trong một giao dịch; không tự nạp khi
 backend khởi động. Xem lệnh nạp seed trong [README](../README.md).
 
-[database-queries.sql](database-queries.sql) có truy vấn mẫu theo schema hiện hành.
 Chạy `.\mvnw.cmd verify` để kiểm tra trên MySQL riêng qua Testcontainers.

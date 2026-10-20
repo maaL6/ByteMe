@@ -28,14 +28,8 @@ public class FoodService {
 
     @Transactional(readOnly = true)
     public List<FoodDto> getActiveFoods(Long categoryId) {
-        List<Food> foods;
-        if (categoryId != null) {
-            requireCategory(categoryId);
-            foods = foodRepository.findByStatusAndCategoryIdOrderByIdAsc(ACTIVE, categoryId);
-        } else {
-            foods = foodRepository.findByStatusOrderByIdAsc(ACTIVE);
-        }
-        return foods.stream().map(FoodDto::fromEntity).toList();
+        if (categoryId != null) requireCategory(categoryId);
+        return foodRepository.findActive(categoryId).stream().map(FoodDto::fromEntity).toList();
     }
 
     @Transactional(readOnly = true)
@@ -53,74 +47,57 @@ public class FoodService {
             throw BusinessException.invalid("VALIDATION_ERROR", "Từ khóa phải có từ 1 đến 100 ký tự.");
         }
 
-        String kw = escapeLike(keyword.trim());
-        List<Food> foods;
-
-        if (categoryId != null) {
-            requireCategory(categoryId);
-            foods = foodRepository.searchActiveFoodsWithCategory(kw, categoryId);
-        } else {
-            foods = foodRepository.searchActiveFoods(kw);
-        }
-
-        return foods.stream().map(FoodDto::fromEntity).toList();
+        if (categoryId != null) requireCategory(categoryId);
+        return foodRepository.searchActive(escapeLike(keyword.trim()), categoryId).stream()
+                .map(FoodDto::fromEntity).toList();
     }
 
     @Transactional
     public FoodDto createFood(FoodRequest request) {
-        requireCategory(request.getCategoryId());
+        requireCategory(request.categoryId());
 
-        String name = request.getName().trim();
+        String name = request.name().trim();
         if (foodRepository.existsByNormalizedName(normalize(name))) {
             throw duplicateName();
         }
 
         Food food = Food.builder()
-                .categoryId(request.getCategoryId())
+                .categoryId(request.categoryId())
                 .name(name)
-                .description(request.getDescription())
-                .price(request.getPrice())
-                .imageUrl(request.getImageUrl())
-                .stockQuantity(request.getStockQuantity() != null ? request.getStockQuantity() : 0)
-                .status(request.getStatus() != null ? request.getStatus() : ACTIVE)
+                .description(request.description())
+                .price(request.price())
+                .imageUrl(request.imageUrl())
+                .stockQuantity(request.stockQuantity() != null ? request.stockQuantity() : 0)
+                .status(request.status() != null ? request.status() : ACTIVE)
                 .build();
-
-        Food savedFood = foodRepository.save(food);
-        return FoodDto.fromEntity(savedFood);
+        return FoodDto.fromEntity(foodRepository.save(food));
     }
 
+    /** Entity đã được JPA quản lý: thay đổi tự ghi xuống DB khi transaction commit, không cần save(). */
     @Transactional
     public FoodDto updateFood(Long id, FoodRequest request) {
         Food food = findFood(id);
+        requireCategory(request.categoryId());
 
-        if (!food.getCategoryId().equals(request.getCategoryId())) {
-            requireCategory(request.getCategoryId());
-        }
-
-        String name = request.getName().trim();
+        String name = request.name().trim();
         if (foodRepository.existsByNormalizedNameAndIdNot(normalize(name), id)) {
             throw duplicateName();
         }
 
-        food.setCategoryId(request.getCategoryId());
+        food.setCategoryId(request.categoryId());
         food.setName(name);
-        food.setDescription(request.getDescription());
-        food.setPrice(request.getPrice());
-        food.setImageUrl(request.getImageUrl());
-        food.setStockQuantity(request.getStockQuantity() != null ? request.getStockQuantity() : food.getStockQuantity());
-        food.setStatus(request.getStatus() != null ? request.getStatus() : food.getStatus());
-
-        Food updatedFood = foodRepository.save(food);
-        return FoodDto.fromEntity(updatedFood);
+        food.setDescription(request.description());
+        food.setPrice(request.price());
+        food.setImageUrl(request.imageUrl());
+        if (request.stockQuantity() != null) food.setStockQuantity(request.stockQuantity());
+        if (request.status() != null) food.setStatus(request.status());
+        return FoodDto.fromEntity(food);
     }
 
+    /** Ngừng bán (INACTIVE) thay vì xóa: đơn cũ giữ snapshot, hủy đơn vẫn hoàn kho được. */
     @Transactional
     public void deleteFood(Long id) {
-        Food food = findFood(id);
-
-        // Ngừng bán (INACTIVE) thay vì xóa: đơn cũ giữ snapshot, hủy đơn vẫn hoàn kho được.
-        food.setStatus("INACTIVE");
-        foodRepository.save(food);
+        findFood(id).setStatus("INACTIVE");
     }
 
     // ----- Dùng bởi module Cart -----
@@ -138,7 +115,7 @@ public class FoodService {
     public Map<Long, FoodDto> findByIds(Collection<Long> ids) {
         return foodRepository.findAllById(ids).stream()
                 .map(FoodDto::fromEntity)
-                .collect(Collectors.toMap(FoodDto::getId, Function.identity()));
+                .collect(Collectors.toMap(FoodDto::id, Function.identity()));
     }
 
     // ----- Dùng bởi module Order, luôn trong giao dịch của Order -----

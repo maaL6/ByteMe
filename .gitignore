@@ -1,5 +1,4 @@
 target/
-database-backups/
 .idea/
 *.iml
 .vscode/
@@ -17,5 +16,5 @@ Thumbs.db
 .local/
 .venv/
 
-# Build artifact cho Kaggle: tạo bằng ./mvnw package rồi copy vào đây, không commit
-kaggle/dataset/application.jar
+# Dataset Kaggle: tạo theo kaggle/script/README.md (bước 0), không commit
+kaggle/dataset/
