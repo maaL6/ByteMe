@@ -79,6 +79,9 @@ phase 1 không dùng khóa hàng (`SELECT … FOR UPDATE`) hay khóa lạc quan 
   cùng ghi `stock - qty`. Tồn kho không âm vì service kiểm tra `stock >= qty` trước khi ghi.
 - Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể hoàn kho hai lần.
 - Admin sửa món đồng thời với checkout có thể ghi đè tồn kho.
+- Checkout đồng thời trên cùng món dễ gặp deadlock InnoDB (khóa S do FK của `order_items`
+  rồi nâng lên khóa X khi `UPDATE foods`). Transaction bị rollback và trả
+  `409 CONCURRENT_UPDATE` để client gửi lại; phase 1 không tự retry.
 
 Các điểm này để dành cho phase 2 và là mục tiêu đo trước/sau cải tiến.
 
@@ -113,7 +116,8 @@ Trạng thái đơn: `PENDING → CONFIRMED → PROCESSING`, rồi `DINE_IN → 
 Mã lỗi nghiệp vụ thường gặp: `VALIDATION_ERROR`, `EMPTY_CART` (400); `FORBIDDEN` (403);
 `FOOD_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `CART_ITEM_NOT_FOUND`,
 `ORDER_NOT_FOUND` (404); `FOOD_UNAVAILABLE`, `INSUFFICIENT_STOCK`, `FOOD_NAME_CONFLICT`,
-`INVALID_ORDER_TRANSITION`, `CONFLICT` (409, vi phạm UNIQUE của database).
+`INVALID_ORDER_TRANSITION`, `CONFLICT` (409, vi phạm UNIQUE của database),
+`CONCURRENT_UPDATE` (409, deadlock/hết thời gian chờ khóa; gửi lại được).
 
 ## Kiểm thử
 
@@ -170,7 +174,9 @@ CLI thử nghiệm `LocalTokenCli` nằm trong `src/test/java/org/example/dev/`,
 
 Dùng JWT đăng nhập thật cho cả Cart và Order; không dùng `X-User-Id`. Subject của JWT
 phải là ID số dương (ID tài khoản); subject không phải số (ví dụ JWT fixture) bị 403 ở
-Cart/Order. Service không kiểm tra ID đó có tồn tại trong database.
+Cart/Order. Service không kiểm tra ID đó có tồn tại trong database: token thật chỉ phát cho
+tài khoản đã có và `users` không bị xóa (FK `RESTRICT`), nên chỉ JWT tự ký với ID không tồn tại
+mới gặp lỗi; khi đó thêm giỏ/đặt đơn vi phạm FK và trả `409 CONFLICT`.
 POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/orders`:
 
 ```json

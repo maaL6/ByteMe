@@ -314,14 +314,18 @@ def run():
     clear("b")
     add("a", primary, 21)
     count_before = int(sql(f"SELECT COUNT(*) FROM orders WHERE user_id = {int(USERS['a'])}"))
-    http("Insufficient stock", "POST", "/api/orders", 409, DINE, TOKENS["a"], code="INSUFFICIENT_STOCK")
+    error, _ = http("Insufficient stock", "POST", "/api/orders", 409, DINE, TOKENS["a"], code="INSUFFICIENT_STOCK")
+    check("Stock error names the food", primary_body["name"] in (error or {}).get("message", ""),
+          primary_body["name"], (error or {}).get("message"))
     check("Failed checkout leaves stock", stock(primary) == 20, 20, stock(primary))
     check("Failed checkout creates no order", int(sql(f"SELECT COUNT(*) FROM orders WHERE user_id = {int(USERS['a'])}")) == count_before,
           count_before, int(sql(f"SELECT COUNT(*) FROM orders WHERE user_id = {int(USERS['a'])}")))
     cart, _ = http("Cart retained after failed checkout", "GET", "/api/cart", 200, token=TOKENS["a"])
     check("Failed checkout retains quantity", cart["items"][0]["quantity"] == 21, 21, cart["items"][0]["quantity"])
     http("Stop selling cart food", "DELETE", f"/api/foods/{primary}", 204, token=TOKENS["admin"])
-    http("Inactive food blocks checkout", "POST", "/api/orders", 409, DINE, TOKENS["a"], code="FOOD_UNAVAILABLE")
+    error, _ = http("Inactive food blocks checkout", "POST", "/api/orders", 409, DINE, TOKENS["a"], code="FOOD_UNAVAILABLE")
+    check("Unavailable error names the food", primary_body["name"] in (error or {}).get("message", ""),
+          primary_body["name"], (error or {}).get("message"))
     clear("a")
     # Concurrency checks (last unit, concurrent adds, double checkout/cancel) move to phase 2:
     # phase 1 has no row locks or optimistic locking, so those races are the before/after target.

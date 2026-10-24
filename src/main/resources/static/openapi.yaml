@@ -667,7 +667,7 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
     Conflict:
-      description: Trùng dữ liệu, món ngừng bán, thiếu tồn kho hoặc chuyển trạng thái không hợp lệ.
+      description: Trùng dữ liệu, món ngừng bán, thiếu tồn kho, chuyển trạng thái không hợp lệ hoặc tranh chấp khóa khi ghi đồng thời (CONCURRENT_UPDATE, có thể gửi lại).
       content:
         application/json:
           schema:

@@ -118,7 +118,7 @@ public class FoodService {
         Food food = findFood(id);
         requireActive(food);
         if (food.getStockQuantity() < quantity) {
-            throw BusinessException.conflict("INSUFFICIENT_STOCK", "Món ăn không đủ tồn kho.");
+            throw BusinessException.conflict("INSUFFICIENT_STOCK", "Món \"" + food.getName() + "\" không đủ tồn kho.");
         }
         food.setStockQuantity(food.getStockQuantity() - quantity);
         return FoodDto.fromEntity(food);
@@ -142,7 +142,7 @@ public class FoodService {
 
     private static void requireActive(Food food) {
         if (!ACTIVE.equals(food.getStatus())) {
-            throw BusinessException.conflict("FOOD_UNAVAILABLE", "Món ăn đã ngừng bán.");
+            throw BusinessException.conflict("FOOD_UNAVAILABLE", "Món \"" + food.getName() + "\" đã ngừng bán.");
         }
     }
 
