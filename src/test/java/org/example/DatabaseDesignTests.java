@@ -81,14 +81,12 @@ class DatabaseDesignTests {
         rollback(jdbc -> {
             reject(jdbc, "UPDATE users SET email = UPPER('admin@byteme.example') WHERE id = 2");
             reject(jdbc, "UPDATE users SET phone = '0900000001' WHERE id = 2");
-            // Collation _ci: UNIQUE trên name không phân biệt hoa thường; service đã trim trước khi lưu.
             reject(jdbc, "INSERT INTO categories (name) VALUES ('CƠM')");
             reject(jdbc, "UPDATE categories SET name = 'CƠM' WHERE id = 3");
             reject(jdbc, """
                     INSERT INTO foods (category_id, name, price)
                     SELECT 2, UPPER(name), price FROM foods WHERE id = 1
                     """);
-            // Collation _as: có dấu và không dấu là hai tên khác nhau.
             jdbc.update("INSERT INTO categories (name) VALUES ('Com')");
         });
     }

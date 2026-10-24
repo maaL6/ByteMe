@@ -1,9 +1,5 @@
 package org.example.common;
 
-/**
- * Lỗi nghiệp vụ dùng chung cho Food/Cart/Order. Tầng nghiệp vụ chỉ chọn loại lỗi và mã lỗi;
- * GlobalErrors chuyển loại lỗi thành HTTP status, nên service không phụ thuộc framework web.
- */
 public class BusinessException extends RuntimeException {
     public enum Type { INVALID, FORBIDDEN, NOT_FOUND, CONFLICT }
 

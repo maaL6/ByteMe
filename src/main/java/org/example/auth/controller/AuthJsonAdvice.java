@@ -14,7 +14,6 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAdapter;
 
-/** JSON strict chỉ cho Auth; không đổi ObjectMapper dùng chung của module khác. */
 @ControllerAdvice(assignableTypes = AuthController.class)
 public class AuthJsonAdvice extends RequestBodyAdviceAdapter {
     private final ObjectMapper strict;

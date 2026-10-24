@@ -15,7 +15,6 @@ public record OrderDto(Long id, Long userId, OrderType orderType, OrderStatus st
         Instant cancelledAt, Instant completedAt, Instant createdAt, Instant updatedAt,
         List<OrderItemDto> items, BigDecimal totalAmount) {
 
-    /** Tổng tiền tính từ snapshot các dòng đơn, không lưu riêng trên bảng orders. */
     public static OrderDto fromEntity(Order order) {
         List<OrderItemDto> items = order.getItems().stream().map(OrderItemDto::fromEntity).toList();
         BigDecimal total = items.stream().map(OrderItemDto::lineTotal).reduce(new BigDecimal("0.00"), BigDecimal::add);

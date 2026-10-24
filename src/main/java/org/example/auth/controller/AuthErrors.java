@@ -11,7 +11,6 @@ import org.example.common.ApiError;
 import org.example.common.GlobalErrors;
 import org.example.platform.security.LoginRateLimiter;
 
-/** Lỗi nghiệp vụ của Auth; lỗi chung (JSON sai, 405, 415, 500...) do GlobalErrors xử lý. */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = AuthController.class)
 public class AuthErrors {

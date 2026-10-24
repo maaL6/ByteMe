@@ -16,15 +16,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-/**
- * Lỗi chung cho mọi controller. Food/Cart/Order ném BusinessException; riêng Auth có
- * AuthErrors xử lý AuthFailure trước, nhờ @Order ở class đó.
- */
 @RestControllerAdvice
 public class GlobalErrors {
     private static final Logger log = LoggerFactory.getLogger(GlobalErrors.class);
 
-    /** Lỗi nghiệp vụ của Food/Cart/Order: loại lỗi quyết định HTTP status, code giữ nguyên. */
     @ExceptionHandler(BusinessException.class)
     ResponseEntity<ApiError> business(BusinessException e, HttpServletRequest r) {
         int status = switch (e.type()) {
@@ -36,7 +31,6 @@ public class GlobalErrors {
         return error(r, status, e.code(), e.getMessage());
     }
 
-    /** Lỗi @Valid: trả kèm danh sách field sai. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> invalid(MethodArgumentNotValidException e, HttpServletRequest r) {
         var fields = e.getBindingResult().getFieldErrors().stream()
@@ -61,7 +55,6 @@ public class GlobalErrors {
         return error(r, 405, "METHOD_NOT_ALLOWED", "Method không được hỗ trợ.");
     }
 
-    /** Vi phạm unique/FK, ví dụ hai request ghi đồng thời cùng vượt qua bước kiểm tra trước của service. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> integrity(DataIntegrityViolationException e, HttpServletRequest r) {
         log.warn("Vi phạm ràng buộc dữ liệu tại {}: {}", r.getRequestURI(), e.getMostSpecificCause().getMessage());

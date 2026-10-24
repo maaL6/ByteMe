@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
-/** Snapshot tên/giá món tại lúc đặt; không đổi khi món được sửa sau đó. created_at do MySQL tự đặt. */
 @Entity
 @Table(name = "order_items")
 @Getter
@@ -22,7 +21,6 @@ public class OrderItem {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    // Chỉ giữ ID món, không dùng entity của module Food.
     @Column(name = "food_id", nullable = false)
     private Long foodId;
 

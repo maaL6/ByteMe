@@ -21,10 +21,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Nghiệp vụ đơn hàng. Quyền theo vai trò đã được SecurityConfiguration kiểm tra;
- * service chỉ kiểm tra quyền sở hữu đơn và quy tắc nghiệp vụ.
- */
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -36,10 +32,6 @@ public class OrderService {
     private final FoodService foodService;
     private final Clock clock;
 
-    /**
-     * Checkout trong một giao dịch: đọc giỏ, kiểm tra và trừ kho từng món, lưu đơn PENDING
-     * với snapshot tên/giá rồi dọn giỏ. Lỗi ở bất kỳ bước nào rollback toàn bộ.
-     */
     @Transactional
     public OrderDto create(long customerId, CreateOrderRequest request) {
         CreateOrderRequest input = applyOrderTypeRules(request);
@@ -75,7 +67,6 @@ public class OrderService {
         return OrderDto.fromEntity(saved);
     }
 
-    /** CUSTOMER chỉ thấy đơn của mình; EMPLOYEE mặc định thấy các đơn đang cần xử lý. */
     @Transactional(readOnly = true)
     public OrderPage list(long userId, Role role, OrderStatus status, OrderType type, int page, int size) {
         if (page < 0 || size < 1 || size > 100 || page > Integer.MAX_VALUE / size) {
@@ -99,7 +90,6 @@ public class OrderService {
         return OrderDto.fromEntity(order);
     }
 
-    /** Khách chỉ hủy đơn PENDING của chính mình. */
     @Transactional
     public OrderDto cancel(long customerId, long orderId) {
         Order order = orders.findById(orderId).orElseThrow(OrderService::orderNotFound);
@@ -122,7 +112,6 @@ public class OrderService {
         return OrderDto.fromEntity(moveTo(order, next, employeeId));
     }
 
-    /** PENDING → CONFIRMED → PROCESSING; DINE_IN → COMPLETED, DELIVERY → SHIPPING → COMPLETED. */
     private static boolean canMove(Order order, OrderStatus next) {
         return switch (order.getStatus()) {
             case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
@@ -135,7 +124,6 @@ public class OrderService {
         };
     }
 
-    /** Hủy đơn thì hoàn kho; CANCELLED là trạng thái cuối nên một đơn chỉ được hủy một lần. */
     private Order moveTo(Order order, OrderStatus next, long actorId) {
         Instant now = now();
         if (next == OrderStatus.CANCELLED) {
@@ -152,10 +140,6 @@ public class OrderService {
         return order;
     }
 
-    /**
-     * DTO đã được @Valid kiểm tra bắt buộc/độ dài; ở đây là quy tắc theo loại đơn: DINE_IN cần số bàn,
-     * DELIVERY cần thông tin giao hàng, và mỗi loại chỉ nhận phương thức thanh toán phù hợp.
-     */
     private static CreateOrderRequest applyOrderTypeRules(CreateOrderRequest input) {
         String note = trimToNull(input.note());
         if (input.orderType() == OrderType.DINE_IN) {
@@ -189,7 +173,6 @@ public class OrderService {
     }
 
     private Instant now() {
-        // DATETIME(6) lưu tới micro giây; cắt trước để giá trị trả về khớp với giá trị đọc lại.
         return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 

@@ -72,7 +72,6 @@ public class FoodService {
         return FoodDto.fromEntity(foodRepository.save(food));
     }
 
-    /** Entity đã được JPA quản lý: thay đổi tự ghi xuống DB khi transaction commit, không cần save(). */
     @Transactional
     public FoodDto updateFood(Long id, FoodRequest request) {
         Food food = findFood(id);
@@ -93,15 +92,12 @@ public class FoodService {
         return FoodDto.fromEntity(food);
     }
 
-    /** Ngừng bán (INACTIVE) thay vì xóa: đơn cũ giữ snapshot, hủy đơn vẫn hoàn kho được. */
     @Transactional
     public void deleteFood(Long id) {
         findFood(id).setStatus("INACTIVE");
     }
 
-    // ----- Dùng bởi module Cart -----
 
-    /** Món phải tồn tại (404) và đang bán (409) mới được thêm vào giỏ. */
     @Transactional(readOnly = true)
     public FoodDto getAvailableFood(long id) {
         Food food = findFood(id);
@@ -109,7 +105,6 @@ public class FoodService {
         return FoodDto.fromEntity(food);
     }
 
-    /** Thông tin món để hiển thị trong giỏ, kể cả món đã ngừng bán. */
     @Transactional(readOnly = true)
     public Map<Long, FoodDto> findByIds(Collection<Long> ids) {
         return foodRepository.findAllById(ids).stream()
@@ -117,12 +112,7 @@ public class FoodService {
                 .collect(Collectors.toMap(FoodDto::id, Function.identity()));
     }
 
-    // ----- Dùng bởi module Order, luôn trong giao dịch của Order -----
 
-    /**
-     * Kiểm tra món còn bán và đủ kho rồi trừ kho; thay đổi ghi xuống DB khi giao dịch Order commit.
-     * Trả về tên/giá hiện tại để Order lưu snapshot.
-     */
     @Transactional
     public FoodDto reserveStock(long id, int quantity) {
         Food food = findFood(id);
@@ -134,7 +124,6 @@ public class FoodService {
         return FoodDto.fromEntity(food);
     }
 
-    /** Hoàn lại kho khi hủy đơn, kể cả món đã ngừng bán. */
     @Transactional
     public void releaseStock(long id, int quantity) {
         Food food = findFood(id);
@@ -165,7 +154,6 @@ public class FoodService {
         return BusinessException.conflict("FOOD_NAME_CONFLICT", "Tên món ăn đã tồn tại trong thực đơn.");
     }
 
-    /** Escape ký tự đại diện của LIKE để '%' và '_' trong từ khóa được tìm đúng nghĩa đen. */
     private static String escapeLike(String keyword) {
         return keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }

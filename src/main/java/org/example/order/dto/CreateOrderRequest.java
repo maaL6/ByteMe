@@ -5,10 +5,6 @@ import jakarta.validation.constraints.Size;
 import org.example.order.domain.OrderType;
 import org.example.order.domain.PaymentMethod;
 
-/**
- * Giới hạn độ dài khớp với cột trong schema.sql. Trường nào bắt buộc/bị cấm tùy theo orderType
- * là quy tắc nghiệp vụ, do OrderService kiểm tra.
- */
 public record CreateOrderRequest(
         @NotNull(message = "orderType là bắt buộc")
         OrderType orderType,

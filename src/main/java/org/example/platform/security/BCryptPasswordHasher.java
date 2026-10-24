@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.example.auth.service.PasswordHasher;
 
-/** Raw BCrypt 60 ký tự, tương thích password_hash và seed ByteMe. */
 public final class BCryptPasswordHasher implements PasswordHasher {
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
     @Override public String hash(String rawPassword) {

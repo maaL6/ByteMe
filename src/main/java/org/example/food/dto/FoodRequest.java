@@ -10,10 +10,6 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
-/**
- * Giới hạn độ dài khớp với cột trong schema.sql để dữ liệu quá dài trả 400 thay vì lỗi từ DB.
- * stockQuantity/status bỏ trống: khi tạo dùng mặc định (0, ACTIVE), khi cập nhật giữ nguyên.
- */
 public record FoodRequest(
         @NotNull(message = "categoryId là bắt buộc")
         @Positive(message = "categoryId phải là số dương")
@@ -23,7 +19,6 @@ public record FoodRequest(
         @Size(max = 150, message = "Tên món tối đa 150 ký tự")
         String name,
 
-        // Cột TEXT tối đa 65.535 byte; 16.000 ký tự utf8mb4 luôn vừa.
         @Size(max = 16000, message = "Mô tả tối đa 16000 ký tự")
         String description,
 

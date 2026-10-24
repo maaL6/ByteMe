@@ -13,7 +13,6 @@ import org.example.auth.dto.AccessToken;
 import org.example.auth.service.TokenIssuer;
 import org.example.shared.api.AuthenticatedUser;
 
-/** RS256 cho tích hợp local với mock; chưa chốt chính sách signing production. */
 public final class LocalRsaTokenIssuer implements TokenIssuer {
     public static final String ISSUER = "sa-local-dev";
     public static final String AUDIENCE = "sa-mock-api";

@@ -102,7 +102,6 @@ class OrderServiceTest {
         sequence.verify(carts).clearCart(4);
     }
 
-    /** Khách chưa có giỏ: CartService trả map rỗng, checkout báo EMPTY_CART. */
     @Test void missingCartIsEmptyCartAndDoesNotTouchFoodsOrOrders() {
         when(carts.getItemsForCheckout(4)).thenReturn(Map.of());
         assertCode("EMPTY_CART", () -> service.create(CUSTOMER, dineIn()));
@@ -110,7 +109,6 @@ class OrderServiceTest {
         verify(carts, never()).clearCart(anyLong());
     }
 
-    /** Bắt buộc/độ dài do @Valid kiểm tra (OrderWebTest); service kiểm tra quy tắc theo loại đơn. */
     @Test void appliesOrderTypeRulesBeforeCallingCart() {
         for (var input : List.of(
                 new CreateOrderRequest(OrderType.DINE_IN, null, null, null, null, PaymentMethod.CASH, null),
@@ -187,7 +185,6 @@ class OrderServiceTest {
         assertCode("ORDER_NOT_FOUND", () -> service.get(CUSTOMER, Role.CUSTOMER, 9999));
         assertCode("ORDER_NOT_FOUND", () -> service.cancel(CUSTOMER, 9999));
         assertCode("ORDER_NOT_FOUND", () -> service.updateStatus(EMPLOYEE, 9999, OrderStatus.CONFIRMED));
-        // ID ≤ 0 không tồn tại: trả 404 như Food/Cart.
         for (long missing : new long[]{0, -1}) {
             assertCode("ORDER_NOT_FOUND", () -> service.get(CUSTOMER, Role.CUSTOMER, missing));
             assertCode("ORDER_NOT_FOUND", () -> service.cancel(CUSTOMER, missing));
@@ -202,7 +199,7 @@ class OrderServiceTest {
         for (var type : OrderType.values()) {
             for (var current : OrderStatus.values()) {
                 for (var next : OrderStatus.values()) {
-                    if (next == OrderStatus.PENDING) continue; // không bao giờ là đích hợp lệ: xem test bên dưới
+                    if (next == OrderStatus.PENDING) continue;
                     var existing = order(type, current);
                     Long confirmedBefore = existing.getConfirmedBy();
                     when(orders.findById(1001L)).thenReturn(Optional.of(existing));
@@ -228,7 +225,6 @@ class OrderServiceTest {
                 }
             }
         }
-        // Chỉ các lần hủy hợp lệ (PENDING/CONFIRMED/PROCESSING × 2 loại đơn) mới hoàn kho.
         verify(foods, times(6)).releaseStock(1, 2);
     }
 

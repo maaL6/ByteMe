@@ -25,7 +25,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("select count(o) " + FILTER)
     long countMatching(Long userId, Collection<OrderStatus> statuses, OrderType type);
 
-    /** Phân trang bằng page/size số nguyên để tầng nghiệp vụ không phụ thuộc kiểu của Spring Data. */
     default List<Order> findPage(Long userId, Collection<OrderStatus> statuses, OrderType type, int page, int size) {
         return search(userId, statuses, type, PageRequest.of(page, size));
     }

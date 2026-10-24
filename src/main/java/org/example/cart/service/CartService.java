@@ -26,7 +26,6 @@ public class CartService {
     private final CartRepository cartRepository;
     private final FoodService foodService;
 
-    /** Chưa có giỏ thì trả giỏ rỗng (id = null) mà không tạo hàng carts. */
     @Transactional(readOnly = true)
     public CartDto getCart(long userId) {
         return cartRepository.findByUserId(userId)
@@ -34,7 +33,6 @@ public class CartService {
                 .orElseGet(() -> new CartDto(null, userId, List.of()));
     }
 
-    /** Giỏ được tạo ở lần thêm món đầu tiên. */
     @Transactional
     public CartDto addToCart(long userId, AddToCartRequest request) {
         Cart cart = cartRepository.findByUserId(userId)
@@ -92,9 +90,7 @@ public class CartService {
         return toCartDto(cart);
     }
 
-    // ----- Dùng bởi module Order, luôn trong giao dịch checkout -----
 
-    /** foodId → số lượng theo thứ tự món trong giỏ; chưa có giỏ thì trả map rỗng. */
     @Transactional(readOnly = true)
     public Map<Long, Integer> getItemsForCheckout(long userId) {
         Map<Long, Integer> items = new LinkedHashMap<>();
@@ -103,7 +99,6 @@ public class CartService {
         return items;
     }
 
-    /** Dọn giỏ sau khi tạo đơn; giữ lại hàng carts để khách tiếp tục thêm món. */
     @Transactional
     public void clearCart(long userId) {
         cartRepository.findByUserId(userId).ifPresent(cart -> {

@@ -125,7 +125,6 @@ class FoodCartSecurityTest {
         verifyNoInteractions(foods);
     }
 
-    /** Không còn CHECK trong DB cho foods: chặn giá <= 0, tồn kho âm, trạng thái lạ bằng Bean Validation. */
     @Test void invalidPriceStockOrStatusIs400AndNeverReachesService() throws Exception {
         for (String body : new String[]{
                 "{\"categoryId\":1,\"name\":\"Pho\",\"price\":-1000}",
@@ -142,7 +141,6 @@ class FoodCartSecurityTest {
         verifyNoInteractions(foods);
     }
 
-    /** Ví dụ: hai lần thêm món đầu tiên đồng thời cùng tạo giỏ, lần sau vi phạm UNIQUE carts(user_id). */
     @Test void uniqueViolationIs409Conflict() throws Exception {
         when(cart.addToCart(org.mockito.ArgumentMatchers.eq(4L), org.mockito.ArgumentMatchers.any()))
                 .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uq_carts_user"));

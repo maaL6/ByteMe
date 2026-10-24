@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 
-/** created_at/updated_at do MySQL tự đặt (DEFAULT / ON UPDATE CURRENT_TIMESTAMP), không map ở đây. */
 @Entity
 @Table(name = "cart_items")
 @Getter
@@ -21,7 +20,6 @@ public class CartItem {
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
 
-    // Chỉ giữ ID món: Cart lấy thông tin món qua FoodService, không dùng entity của module Food.
     @Column(name = "food_id", nullable = false)
     private Long foodId;
 

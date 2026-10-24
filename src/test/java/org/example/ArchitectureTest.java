@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import static com.tngtech.archunit.base.DescribedPredicate.describe;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
-/** Kiểm tra tự động các quy tắc kiến trúc mô tả trong README. */
 class ArchitectureTest {
     private static final JavaClasses CLASSES = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
@@ -25,7 +24,6 @@ class ArchitectureTest {
                 .check(CLASSES);
     }
 
-    /** Repository của module vẫn kế thừa JpaRepository; service chỉ được dùng các thao tác kiểu CRUD. */
     @Test void businessLayerDoesNotCallJpaSpecificRepositoryMethods() {
         noClasses().that().resideInAPackage("..service..")
                 .should().callMethodWhere(describe("phương thức khai báo trong JpaRepository (flush, saveAndFlush...)",

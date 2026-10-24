@@ -57,7 +57,6 @@ class FoodServiceTest {
         when(foods.findById(7L)).thenReturn(Optional.of(food(7, 25, "ACTIVE")));
         assertError(BusinessException.Type.NOT_FOUND, "CATEGORY_NOT_FOUND", () -> service.updateFood(7L, request(2L, "Phở")));
         when(categories.existsById(1L)).thenReturn(true);
-        // Service chỉ trim; so khớp không phân biệt hoa thường do collation _ci của MySQL đảm nhận.
         when(foods.existsByNameAndIdNot("Phở Gà", 7L)).thenReturn(true);
         assertError(BusinessException.Type.CONFLICT, "FOOD_NAME_CONFLICT", () -> service.updateFood(7L, request(" Phở Gà ")));
         assertEquals("Phở", service.updateFood(7L, request("Phở")).name());

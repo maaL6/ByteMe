@@ -24,7 +24,6 @@ import java.net.URI;
 @RequiredArgsConstructor
 public class OrderController {
 
-    // Xác thực và quyền theo vai trò do SecurityConfiguration kiểm tra trước khi vào controller.
     private final OrderService orderService;
 
     @PostMapping

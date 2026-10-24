@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class CartController {
 
-    // Xác thực và quyền CUSTOMER do SecurityConfiguration kiểm tra trước khi vào controller.
     private final CartService cartService;
 
     @GetMapping

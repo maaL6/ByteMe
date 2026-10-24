@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
-/** created_at/updated_at do MySQL tự đặt (DEFAULT / ON UPDATE CURRENT_TIMESTAMP), không map ở đây. */
 @Entity
 @Table(name = "foods")
 @Getter

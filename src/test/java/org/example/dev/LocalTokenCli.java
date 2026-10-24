@@ -16,7 +16,6 @@ import org.example.platform.security.LocalRsaTokenIssuer;
 import org.example.shared.api.AuthenticatedUser;
 import org.example.shared.api.Role;
 
-/** Chỉ CLI local; không có endpoint cấp role, không thay thế đăng nhập thật. */
 public final class LocalTokenCli {
     public static void main(String[] args) throws Exception {
         if (args.length != 1) throw new IllegalArgumentException("Truyền đường dẫn thư mục .local");

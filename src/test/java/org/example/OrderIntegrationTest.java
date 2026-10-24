@@ -59,14 +59,12 @@ class OrderIntegrationTest {
     @MockitoSpyBean CartService carts;
 
     @BeforeEach void seed() {
-        // This database belongs solely to this ephemeral test container.
         for (String table : List.of("order_items", "orders", "cart_items", "carts", "foods", "categories", "users"))
             db.update("DELETE FROM " + table);
         new ResourceDatabasePopulator(new ClassPathResource("db/seed.sql"))
                 .execute(Objects.requireNonNull(db.getDataSource()));
     }
 
-    /** Spy thật nằm sau proxy @Transactional; stub trên target để giao dịch vẫn bao quanh lời gọi. */
     private CartService cartTarget() {
         return AopTestUtils.getUltimateTargetObject(carts);
     }
@@ -171,7 +169,6 @@ class OrderIntegrationTest {
         assertNotNull(cancelled.confirmedAt());
         assertNotNull(cancelled.cancelledAt());
         assertEquals(originalStock + 2, stock(13));
-        // A failed write after restoration must roll back both stock and status.
         int before = stock(1);
         assertThrows(RuntimeException.class, () -> transactions.executeWithoutResult(status -> {
             service.cancel(CUSTOMER, 1001);
@@ -254,7 +251,6 @@ class OrderIntegrationTest {
         carts.updateCartItem(6L, item.id(), update);
         carts.addToCart(6L, add(1, 1));
         carts.removeCartItem(6L, item.id());
-        // created_at và updated_at đều do MySQL đặt (DEFAULT / ON UPDATE), không lấy từ giờ JVM.
         assertEquals(Boolean.TRUE, db.queryForObject("""
                 SELECT updated_at >= created_at AND TIMESTAMPDIFF(SECOND, updated_at, NOW(6)) < 60
                 FROM carts WHERE user_id = 6""", Boolean.class));

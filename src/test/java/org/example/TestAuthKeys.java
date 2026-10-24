@@ -35,7 +35,6 @@ final class TestAuthKeys {
                     Files.deleteIfExists(directory.resolve("public.pem"));
                     Files.deleteIfExists(directory);
                 } catch (Exception ignored) {
-                    // Test-only temporary keys are outside the repository.
                 }
             }));
             return directory;

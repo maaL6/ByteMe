@@ -64,7 +64,6 @@ public class Order {
     @Column(name = "completed_at")
     private Instant completedAt;
 
-    // Thời điểm do OrderService gán (UTC) để mọi mốc thời gian của đơn dùng cùng một đồng hồ.
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
