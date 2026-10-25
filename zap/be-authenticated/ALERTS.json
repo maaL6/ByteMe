@@ -1,0 +1,176 @@
+{
+  "product": "ByteMe",
+  "track": "be-authenticated",
+  "origin": "http://172.20.0.3:8080",
+  "scope": "Fresh isolated authenticated run; historical findings excluded",
+  "generatedAt": "2026-10-25T18:13:38.596771+07:00",
+  "summary": {
+    "groups": 3,
+    "groupsBySeverity": {
+      "Informational": 2,
+      "Low": 1
+    },
+    "groupsBySource": {
+      "ZAP": 3,
+      "direct": 0
+    },
+    "instances": 13,
+    "nativeReportSampleRows": 22,
+    "counting": "Groups by native plugin/name/risk; instances are unique current-session native API alert IDs, read to total count. JSON report samples are separately counted."
+  },
+  "alerts": [
+    {
+      "pluginId": "10111",
+      "alertRef": "10111",
+      "name": "Authentication Request Identified",
+      "severity": "Informational",
+      "confidence": "Low",
+      "source": "ZAP",
+      "technique": "passive",
+      "instances": [
+        {
+          "nativeAlertId": "0",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "5",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "9",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        }
+      ],
+      "instanceCount": 3,
+      "description": "The given request has been identified as an authentication request. The 'Other Info' field contains a set of key=value lines which identify any relevant fields. If the request is in a context which has an Authentication Method set to \"Auto-Detect\" then this rule will change the authentication to match the request identified.",
+      "solution": "This is an informational alert rather than a vulnerability and so there is nothing to fix.",
+      "testerAssessment": "Authentication/session recognition is informational and is not a confirmed vulnerability."
+    },
+    {
+      "pluginId": "10112",
+      "alertRef": "10112",
+      "name": "Session Management Response Identified",
+      "severity": "Informational",
+      "confidence": [
+        "High",
+        "Medium"
+      ],
+      "source": "ZAP",
+      "technique": "passive",
+      "instances": [
+        {
+          "nativeAlertId": "1",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "accessToken",
+          "confidence": "High",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "2",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "accessToken",
+          "confidence": "Medium",
+          "responseAttribution": "ByteMe application"
+        }
+      ],
+      "instanceCount": 2,
+      "description": "The given response has been identified as containing a session management token. The 'Other Info' field contains a set of header tokens that can be used in the Header Based Session Management Method. If the request is in a context which has a Session Management Method set to \"Auto-Detect\" then this rule will change the session management to use the tokens identified.",
+      "solution": "This is an informational alert rather than a vulnerability and so there is nothing to fix.",
+      "testerAssessment": "Authentication/session recognition is informational and is not a confirmed vulnerability."
+    },
+    {
+      "pluginId": "40012",
+      "alertRef": "40012",
+      "name": "Cross Site Scripting Weakness (Reflected in JSON Response)",
+      "severity": "Low",
+      "confidence": "Low",
+      "source": "ZAP",
+      "technique": "active",
+      "instances": [
+        {
+          "nativeAlertId": "15",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/foods",
+          "parameter": "description",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "16",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/foods",
+          "parameter": "imageUrl",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "17",
+          "method": "PUT",
+          "url": "http://172.20.0.3:8080/api/foods/84",
+          "parameter": "description",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "18",
+          "method": "PUT",
+          "url": "http://172.20.0.3:8080/api/foods/84",
+          "parameter": "imageUrl",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "19",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/orders",
+          "parameter": "note",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "20",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/orders",
+          "parameter": "recipientName",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "21",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/orders",
+          "parameter": "shippingAddress",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        },
+        {
+          "nativeAlertId": "22",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/orders",
+          "parameter": "note",
+          "confidence": "Low",
+          "responseAttribution": "ByteMe application"
+        }
+      ],
+      "instanceCount": 8,
+      "description": "A XSS attack was reflected in a JSON response, this might leave content consumers vulnerable to attack if they don't appropriately handle the data (response).",
+      "solution": "Phase: Architecture and Design\nUse a vetted library or framework that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.\nExamples of libraries and frameworks that make it easier to generate properly encoded output include Microsoft's Anti-XSS library, the OWASP ESAPI Encoding module, and Apache Wicket.\n\nPhases: Implementation; Architecture and Design\nUnderstand the context in which your data will be used and the encoding that will be expected. This is especially important when transmitting data between different components, or when generating outputs that can contain multiple encodings at the same time, such as web pages or multi-part mail messages. Study all expected communication protocols and data representations to determine the required encoding strategies.\nFor any data that will be output to another web page, especially any data that was received from external inputs, use the appropriate encoding on all non-alphanumeric characters.\nConsult the XSS Prevention Cheat Sheet for more details on the types of encoding and escaping that are needed.\n\nPhase: Architecture and Design\nFor any security checks that are performed on the client side, ensure that these checks are duplicated on the server side, in order to avoid CWE-602. Attackers can bypass the client-side checks by modifying values after the checks have been performed, or by changing the client to remove the client-side checks entirely. Then, these modified values would be submitted to the server.\n\nIf available, use structured mechanisms that automatically enforce the separation between data and code. These mechanisms may be able to provide the relevant quoting, encoding, and validation automatically, instead of relying on the developer to provide this capability at every point where output is generated.\n\nPhase: Implementation\nFor every web page that is generated, use and specify a character encoding such as ISO-8859-1 or UTF-8. When an encoding is not specified, the web browser may choose a different encoding by guessing which encoding is actually being used by the web page. This can cause the web browser to treat certain sequences as special, opening up the client to subtle XSS attacks. See CWE-116 for more mitigations related to encoding/escaping.\n\nTo help mitigate XSS attacks against the user's session cookie, set the session cookie to be HttpOnly. In browsers that support the HttpOnly feature (such as more recent versions of Internet Explorer and Firefox), this attribute can prevent the user's session cookie from being accessible to malicious client-side scripts that use document.cookie. This is not a complete solution, since HttpOnly is not supported by all browsers. More importantly, XMLHTTPRequest and other powerful browser technologies provide read access to HTTP headers, including the Set-Cookie header in which the HttpOnly flag is set.\n\nAssume all input is malicious. Use an \"accept known good\" input validation strategy, i.e., use an allow list of acceptable inputs that strictly conform to specifications. Reject any input that does not strictly conform to specifications, or transform it into something that does. Do not rely exclusively on looking for malicious or malformed inputs (i.e., do not rely on a deny list). However, deny lists can be useful for detecting potential attacks or determining which inputs are so malformed that they should be rejected outright.\n\nWhen performing input validation, consider all potentially relevant properties, including length, type of input, the full range of acceptable values, missing or extra inputs, syntax, consistency across related fields, and conformance to business rules. As an example of business rule logic, \"boat\" may be syntactically valid because it only contains alphanumeric characters, but it is not valid if you are expecting colors such as \"red\" or \"blue.\"\n\nEnsure that you perform input validation at well-defined interfaces within the application. This will help protect the application even if a component is reused or moved elsewhere.",
+      "testerAssessment": "Native alert retained; exploit impact has not been independently confirmed."
+    }
+  ],
+  "taskCompletion": "complete"
+}

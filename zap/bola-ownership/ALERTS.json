@@ -1,0 +1,22 @@
+{
+  "product": "ByteMe",
+  "track": "bola-ownership",
+  "origin": "http://127.0.0.1:8081",
+  "summary": {
+    "groups": 0,
+    "bySeverity": {
+      "High": 0,
+      "Medium": 0,
+      "Low": 0,
+      "Informational": 0
+    },
+    "bySource": {
+      "direct": 0,
+      "ZAP": 0
+    },
+    "instances": 0
+  },
+  "alerts": [],
+  "interpretation": "No discrepancy is scoped to performed ownership cases and policy basis; it does not certify overall product safety. No ZAP scan executed in this track.",
+  "taskCompletion": "complete"
+}
