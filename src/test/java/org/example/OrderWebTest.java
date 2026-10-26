@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -147,6 +149,19 @@ class OrderWebTest {
             http.perform(get("/api/orders/1001").header("Authorization", "Bearer customer"))
                     .andExpect(status().is(expected)).andExpect(jsonPath("$.code").value(error.code()))
                     .andExpect(jsonPath("$.message").value(error.getMessage()));
+        }
+    }
+
+    @Test void lockConflictsAre409RetryableInsteadOf500() throws Exception {
+        for (var error : List.of(new CannotAcquireLockException("Deadlock found when trying to get lock"),
+                new PessimisticLockingFailureException("Lock wait timeout exceeded"))) {
+            doThrow(error).when(service).create(anyLong(), any());
+            http.perform(post("/api/orders").header("Authorization", "Bearer customer")
+                    .contentType("application/json")
+                    .content("{\"orderType\":\"DINE_IN\",\"tableNumber\":\"B05\",\"paymentMethod\":\"CASH\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONCURRENT_UPDATE"))
+                    .andExpect(jsonPath("$.path").value("/api/orders"))
+                    .andExpect(header().string("Cache-Control", "no-store"));
         }
     }
 

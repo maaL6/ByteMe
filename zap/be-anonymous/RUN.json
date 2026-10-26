@@ -1,0 +1,4485 @@
+{
+  "product": {
+    "name": "ByteMe",
+    "source": "/Users/hahoangloc/Working/UET/SA/ByteMe",
+    "sourceHead": "e163fbbf74ee92413b99eda54a33a06d933d12ec",
+    "sourceDirty": false
+  },
+  "environment": {
+    "kind": "Docker Compose",
+    "project": "byteme",
+    "composeFile": "/Users/hahoangloc/Working/UET/SA/ByteMe/compose.yaml",
+    "hostOrigin": "http://127.0.0.1:8081",
+    "scannerOrigin": "http://172.20.0.3:8080",
+    "targetContainerId": "02a47facef4a5e7737149b1220066c4ed407a2ab3573c933e20e92f5a84e36b4",
+    "targetImageId": "sha256:76ad297cfe627b48c42fdb9d65880dc287e8bb87327e1a7b452b1d19ff91b8cd",
+    "runtimeOpenApiMatchesSource": true,
+    "targetResetOrRebuilt": false
+  },
+  "track": "be-anonymous",
+  "scope": {
+    "publicBusinessOperations": 5,
+    "protectedDenialControls": 13,
+    "authenticated": false,
+    "BOLA": false,
+    "frontend": false,
+    "wholeTrackCompleted": true
+  },
+  "startedAt": "2026-10-25T17:53:34.012874+07:00",
+  "finishedAt": "2026-10-25T18:00:25.139271+07:00",
+  "freshness": {
+    "newScannerSession": true,
+    "newIsolatedMcp": true,
+    "historicalResultsOrCheckpointsUsedForCoverage": false,
+    "newCredentialFixtures": true,
+    "existingTargetDataPreserved": true
+  },
+  "scanner": {
+    "ZAP": "2.17.0",
+    "MCP": "0.16.0 published runtime",
+    "MCPToolsDiscovered": 78,
+    "sharedScannerModified": false,
+    "concurrency": 1,
+    "rate": "approximately 2 target requests/sec, one request at a time; no lockout or DoS workload",
+    "hostDiskReserveBytes": 2147483648,
+    "knownLimits": "No external-target traffic; kernel egress permits the product adapter only to the verified backend address:8080."
+  },
+  "techniqueRationale": {
+    "selected": "Risk-based native SQLi for numeric and credential boundaries; deeper MEDIUM textual search/login, selected JSON reflection with LOW alert threshold, native valid-phone script, header fuzzing and semantic controls.",
+    "notSelected": "No XML parsing sink (application/xml returned 415), user-selected outbound URL/file/template/OS-command sink was discovered on public handlers. Browser/DOM exploitation is outside BE-only scope. Choices come from source/input behavior, not the common executor rule whitelist.",
+    "runnerChoice": "Guided MCP was used for native GET scans. Its actual anonymous schema has no method/postData fields. The research executor restricts products/rules and private registration to duplicate baselines. A fresh ByteMe adapter reused native ascan, exact SiteNode binding, MCP report reader, journal and owned Docker cleanup without changing shared core gates.",
+    "inputAdaptation": "For each registration mutation, the target field is preserved, fresh non-target credential fields prevent uniqueness blockers, and password/confirmation are synchronized. Login uses fresh real CUSTOMER credentials; issued tokens are never sent on subsequent requests. Each successful create remains a real application request; no attack response cache is used. Login fixtures are reused until their observed quota requires rotation."
+  },
+  "inventory": [
+    {
+      "id": "registerCustomer",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "protected": false
+    },
+    {
+      "id": "issueAccessToken",
+      "method": "POST",
+      "path": "/api/auth/token",
+      "protected": false
+    },
+    {
+      "id": "listActiveFoods",
+      "method": "GET",
+      "path": "/api/foods",
+      "protected": false
+    },
+    {
+      "id": "createFood",
+      "method": "POST",
+      "path": "/api/foods",
+      "protected": true
+    },
+    {
+      "id": "searchActiveFoods",
+      "method": "GET",
+      "path": "/api/foods/search",
+      "protected": false
+    },
+    {
+      "id": "getActiveFood",
+      "method": "GET",
+      "path": "/api/foods/{id}",
+      "protected": false
+    },
+    {
+      "id": "updateFood",
+      "method": "PUT",
+      "path": "/api/foods/{id}",
+      "protected": true
+    },
+    {
+      "id": "deactivateFood",
+      "method": "DELETE",
+      "path": "/api/foods/{id}",
+      "protected": true
+    },
+    {
+      "id": "getCurrentCart",
+      "method": "GET",
+      "path": "/api/cart",
+      "protected": true
+    },
+    {
+      "id": "addCartItem",
+      "method": "POST",
+      "path": "/api/cart/items",
+      "protected": true
+    },
+    {
+      "id": "updateCartItem",
+      "method": "PUT",
+      "path": "/api/cart/items/{cartItemId}",
+      "protected": true
+    },
+    {
+      "id": "removeCartItem",
+      "method": "DELETE",
+      "path": "/api/cart/items/{cartItemId}",
+      "protected": true
+    },
+    {
+      "id": "createOrder",
+      "method": "POST",
+      "path": "/api/orders",
+      "protected": true
+    },
+    {
+      "id": "listOrders",
+      "method": "GET",
+      "path": "/api/orders",
+      "protected": true
+    },
+    {
+      "id": "getOrder",
+      "method": "GET",
+      "path": "/api/orders/{orderId}",
+      "protected": true
+    },
+    {
+      "id": "cancelOrder",
+      "method": "DELETE",
+      "path": "/api/orders/{orderId}",
+      "protected": true
+    },
+    {
+      "id": "confirmOrder",
+      "method": "POST",
+      "path": "/api/orders/{orderId}/confirm",
+      "protected": true
+    },
+    {
+      "id": "updateOrderStatus",
+      "method": "PUT",
+      "path": "/api/orders/{orderId}/status",
+      "protected": true
+    }
+  ],
+  "coverage": [
+    {
+      "caseId": "register-fullName",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": "Exercise fullName validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+      "input": {
+        "location": "JSON-body",
+        "field": "fullName"
+      },
+      "campaigns": [
+        "register-fullName"
+      ],
+      "nativeMutatedRequests": 6,
+      "mutatedResponseStatuses": {
+        "201": 6
+      },
+      "createdWithMutatedTargetField": 6,
+      "postState": {
+        "id": "register-fullName",
+        "technique": "public login with created credentials, token not propagated",
+        "status": 200,
+        "accountIdMatched": true,
+        "storedFieldsMatched": true,
+        "role": "CUSTOMER",
+        "inputField": "fullName",
+        "responseContentType": true,
+        "passwordEchoed": false
+      },
+      "interpretation": "Valid payloads reached new-account persistence; rejected payloads are validation observations. Each password mutation is mirrored to its dependent confirmation, or vice versa. Phone injection payloads hit validation; the additional native script exercised valid local/trimmed/international values."
+    },
+    {
+      "caseId": "register-email",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": "Exercise email validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+      "input": {
+        "location": "JSON-body",
+        "field": "email"
+      },
+      "campaigns": [
+        "register-email"
+      ],
+      "nativeMutatedRequests": 9,
+      "mutatedResponseStatuses": {
+        "400": 6,
+        "201": 3
+      },
+      "createdWithMutatedTargetField": 3,
+      "postState": {
+        "id": "register-email",
+        "technique": "public login with created credentials, token not propagated",
+        "status": 200,
+        "accountIdMatched": true,
+        "storedFieldsMatched": true,
+        "role": "CUSTOMER",
+        "inputField": "email",
+        "responseContentType": true,
+        "passwordEchoed": false
+      },
+      "interpretation": "Valid payloads reached new-account persistence; rejected payloads are validation observations. Each password mutation is mirrored to its dependent confirmation, or vice versa. Phone injection payloads hit validation; the additional native script exercised valid local/trimmed/international values."
+    },
+    {
+      "caseId": "register-phone",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": "Exercise phone validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+      "input": {
+        "location": "JSON-body",
+        "field": "phone"
+      },
+      "campaigns": [
+        "register-phone",
+        "register-phone-valid"
+      ],
+      "nativeMutatedRequests": 10,
+      "mutatedResponseStatuses": {
+        "400": 7,
+        "201": 3
+      },
+      "createdWithMutatedTargetField": 3,
+      "postState": {
+        "id": "register-phone-valid",
+        "technique": "public login with created credentials, token not propagated",
+        "status": 200,
+        "accountIdMatched": true,
+        "storedFieldsMatched": true,
+        "role": "CUSTOMER",
+        "inputField": "phone",
+        "responseContentType": true,
+        "passwordEchoed": false
+      },
+      "interpretation": "Valid payloads reached new-account persistence; rejected payloads are validation observations. Each password mutation is mirrored to its dependent confirmation, or vice versa. Phone injection payloads hit validation; the additional native script exercised valid local/trimmed/international values."
+    },
+    {
+      "caseId": "register-password",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": "Exercise password validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+      "input": {
+        "location": "JSON-body",
+        "field": "password"
+      },
+      "campaigns": [
+        "register-password"
+      ],
+      "nativeMutatedRequests": 4,
+      "mutatedResponseStatuses": {
+        "400": 2,
+        "201": 2
+      },
+      "createdWithMutatedTargetField": 2,
+      "postState": {
+        "id": "register-password",
+        "technique": "public login with created credentials, token not propagated",
+        "status": 200,
+        "accountIdMatched": true,
+        "storedFieldsMatched": true,
+        "role": "CUSTOMER",
+        "inputField": "password",
+        "responseContentType": true,
+        "passwordEchoed": false
+      },
+      "interpretation": "Valid payloads reached new-account persistence; rejected payloads are validation observations. Each password mutation is mirrored to its dependent confirmation, or vice versa. Phone injection payloads hit validation; the additional native script exercised valid local/trimmed/international values."
+    },
+    {
+      "caseId": "register-confirmPassword",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": "Exercise confirmPassword validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+      "input": {
+        "location": "JSON-body",
+        "field": "confirmPassword"
+      },
+      "campaigns": [
+        "register-confirmPassword"
+      ],
+      "nativeMutatedRequests": 4,
+      "mutatedResponseStatuses": {
+        "400": 2,
+        "201": 2
+      },
+      "createdWithMutatedTargetField": 2,
+      "postState": {
+        "id": "register-confirmPassword",
+        "technique": "public login with created credentials, token not propagated",
+        "status": 200,
+        "accountIdMatched": true,
+        "storedFieldsMatched": true,
+        "role": "CUSTOMER",
+        "inputField": "confirmPassword",
+        "responseContentType": true,
+        "passwordEchoed": false
+      },
+      "interpretation": "Valid payloads reached new-account persistence; rejected payloads are validation observations. Each password mutation is mirrored to its dependent confirmation, or vice versa. Phone injection payloads hit validation; the additional native script exercised valid local/trimmed/international values."
+    },
+    {
+      "caseId": "token-email",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "question": "Exercise credential input validation and credential lookup/comparison without propagating the issued identity.",
+      "input": {
+        "location": "JSON-body",
+        "field": "email"
+      },
+      "campaigns": [
+        "token-email"
+      ],
+      "mutatedInputRequests": 19,
+      "responseStatuses": {
+        "400": 15,
+        "200": 2,
+        "401": 2
+      },
+      "businessOutcomes": {
+        "VALIDATION_ERROR": 15,
+        "200": 2,
+        "INVALID_CREDENTIALS": 2
+      },
+      "baselineIssuedToken": true,
+      "issuedTokenPropagated": false
+    },
+    {
+      "caseId": "token-password",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "question": "Exercise credential input validation and credential lookup/comparison without propagating the issued identity.",
+      "input": {
+        "location": "JSON-body",
+        "field": "password"
+      },
+      "campaigns": [
+        "token-password"
+      ],
+      "mutatedInputRequests": 19,
+      "responseStatuses": {
+        "401": 19
+      },
+      "businessOutcomes": {
+        "INVALID_CREDENTIALS": 19
+      },
+      "baselineIssuedToken": true,
+      "issuedTokenPropagated": false
+    },
+    {
+      "caseId": "foods-category-categoryId",
+      "method": "GET",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "question": "Exercise categoryId filter/search handling, numeric validation where applicable, and error/JSON responses against populated catalog data.",
+      "input": {
+        "location": "query",
+        "field": "categoryId"
+      },
+      "campaigns": [
+        "foods-category"
+      ],
+      "mutatedInputRequests": 14,
+      "responseStatuses": {
+        "400": 13,
+        "200": 1
+      },
+      "populatedBaselineCount": 6,
+      "result": "Numeric SQL/XSS payloads rejected by conversion where applicable; text search payloads reached JSON search results. Literal wildcard and empty-query controls are listed in operations."
+    },
+    {
+      "caseId": "foods-search-q",
+      "method": "GET",
+      "route": "/api/foods/search",
+      "role": "anonymous",
+      "question": "Exercise q filter/search handling, numeric validation where applicable, and error/JSON responses against populated catalog data.",
+      "input": {
+        "location": "query",
+        "field": "q"
+      },
+      "campaigns": [
+        "foods-search"
+      ],
+      "mutatedInputRequests": 25,
+      "responseStatuses": {
+        "200": 24,
+        "400": 1
+      },
+      "populatedBaselineCount": 4,
+      "result": "Numeric SQL/XSS payloads rejected by conversion where applicable; text search payloads reached JSON search results. Literal wildcard and empty-query controls are listed in operations."
+    },
+    {
+      "caseId": "foods-search-categoryId",
+      "method": "GET",
+      "route": "/api/foods/search",
+      "role": "anonymous",
+      "question": "Exercise categoryId filter/search handling, numeric validation where applicable, and error/JSON responses against populated catalog data.",
+      "input": {
+        "location": "query",
+        "field": "categoryId"
+      },
+      "campaigns": [
+        "foods-search"
+      ],
+      "mutatedInputRequests": 27,
+      "responseStatuses": {
+        "400": 27
+      },
+      "populatedBaselineCount": 4,
+      "result": "Numeric SQL/XSS payloads rejected by conversion where applicable; text search payloads reached JSON search results. Literal wildcard and empty-query controls are listed in operations."
+    },
+    {
+      "caseId": "foods-id",
+      "method": "GET",
+      "route": "/api/foods/{id}",
+      "role": "anonymous",
+      "question": "Exercise the public numeric selector parser and food lookup/error response on an existing catalog item.",
+      "input": {
+        "location": "path",
+        "field": "id"
+      },
+      "campaigns": [
+        "foods-id"
+      ],
+      "mutatedPathRequests": 7,
+      "responseStatuses": {
+        "404": 1,
+        "400": 6
+      },
+      "notFoundControl": {
+        "id": "catalog-semantic-4",
+        "method": "GET",
+        "path": "/api/foods/999999999",
+        "status": 404,
+        "count": null,
+        "bodyCode": "FOOD_NOT_FOUND"
+      },
+      "scopeGuard": "Extra path segments and decoded slash/CR/LF variants were denied locally and receive no application coverage credit. Applicable numeric-selector validation was exercised by delivered SQLi/XSS variants."
+    },
+    {
+      "caseId": "public-auth-contract-controls",
+      "method": "POST",
+      "route": "/api/auth/register; /api/auth/token",
+      "role": "anonymous",
+      "question": "Check malformed JSON, rejected XML, password dependency, duplicate identity and unsupported HTTP method behavior.",
+      "controls": [
+        {
+          "id": "register-malformed",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 400,
+          "bodyCode": "VALIDATION_ERROR"
+        },
+        {
+          "id": "register-xml",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "status": 415,
+          "bodyCode": "UNSUPPORTED_MEDIA_TYPE"
+        },
+        {
+          "id": "register-method-get",
+          "method": "GET",
+          "path": "/api/auth/register",
+          "status": 405
+        },
+        {
+          "id": "token-malformed",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "status": 400,
+          "bodyCode": "VALIDATION_ERROR"
+        },
+        {
+          "id": "token-xml",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "status": 415,
+          "bodyCode": "UNSUPPORTED_MEDIA_TYPE"
+        },
+        {
+          "id": "token-method-get",
+          "method": "GET",
+          "path": "/api/auth/token",
+          "status": 405
+        },
+        {
+          "id": "register-duplicate",
+          "status": 409,
+          "bodyCode": "ACCOUNT_CONFLICT"
+        },
+        {
+          "id": "register-password-mismatch",
+          "status": 400,
+          "bodyCode": "PASSWORD_MISMATCH"
+        }
+      ]
+    },
+    {
+      "caseId": "aux-0",
+      "method": "GET",
+      "route": "/openapi.yaml",
+      "role": "anonymous",
+      "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+      "campaigns": [
+        "aux-0"
+      ],
+      "responseStatuses": {
+        "200": 13
+      },
+      "applicationRequests": 13
+    },
+    {
+      "caseId": "aux-1",
+      "method": "GET",
+      "route": "/actuator/health",
+      "role": "anonymous",
+      "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+      "campaigns": [
+        "aux-1"
+      ],
+      "responseStatuses": {
+        "200": 13
+      },
+      "applicationRequests": 13
+    },
+    {
+      "caseId": "aux-2",
+      "method": "GET",
+      "route": "/swagger-ui/index.html",
+      "role": "anonymous",
+      "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+      "campaigns": [
+        "aux-2"
+      ],
+      "responseStatuses": {
+        "200": 13
+      },
+      "applicationRequests": 13
+    },
+    {
+      "caseId": "aux-3",
+      "method": "GET",
+      "route": "/v3/api-docs/swagger-config",
+      "role": "anonymous",
+      "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+      "campaigns": [
+        "aux-3"
+      ],
+      "responseStatuses": {
+        "200": 12
+      },
+      "applicationRequests": 12
+    },
+    {
+      "caseId": "aux-4",
+      "method": "GET",
+      "route": "/error",
+      "role": "anonymous",
+      "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+      "campaigns": [
+        "aux-4"
+      ],
+      "responseStatuses": {
+        "500": 12
+      },
+      "applicationRequests": 12
+    },
+    {
+      "caseId": "aux-control-0",
+      "method": "GET",
+      "route": "/swagger-ui.html",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 302,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-1",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-ui.css",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-2",
+      "method": "GET",
+      "route": "/swagger-ui/index.css",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-3",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-ui-bundle.js",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-4",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-ui-standalone-preset.js",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-5",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-initializer.js",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-6",
+      "method": "GET",
+      "route": "/swagger-ui/favicon-32x32.png",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-7",
+      "method": "GET",
+      "route": "/swagger-ui/favicon-16x16.png",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-8",
+      "method": "GET",
+      "route": "/swagger-ui/oauth2-redirect.html",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 200,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-9",
+      "method": "GET",
+      "route": "/actuator/health/liveness",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 404,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "aux-control-10",
+      "method": "GET",
+      "route": "/actuator/health/readiness",
+      "role": "anonymous",
+      "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+      "status": 404,
+      "technique": "baseline via ZAP and passive response inspection",
+      "applicability": "Static assets and the redirect have no discovered mutable backend input; native header handling was exercised on the document entry. Health subpaths returned 404 and exposed no extra operation. Browser UI/DOM execution is outside BE-only scope."
+    },
+    {
+      "caseId": "denial-createFood",
+      "method": "POST",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-updateFood",
+      "method": "PUT",
+      "route": "/api/foods/{id}",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-deactivateFood",
+      "method": "DELETE",
+      "route": "/api/foods/{id}",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-getCurrentCart",
+      "method": "GET",
+      "route": "/api/cart",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-addCartItem",
+      "method": "POST",
+      "route": "/api/cart/items",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-updateCartItem",
+      "method": "PUT",
+      "route": "/api/cart/items/{cartItemId}",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-removeCartItem",
+      "method": "DELETE",
+      "route": "/api/cart/items/{cartItemId}",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-createOrder",
+      "method": "POST",
+      "route": "/api/orders",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-listOrders",
+      "method": "GET",
+      "route": "/api/orders",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-getOrder",
+      "method": "GET",
+      "route": "/api/orders/{orderId}",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-cancelOrder",
+      "method": "DELETE",
+      "route": "/api/orders/{orderId}",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-confirmOrder",
+      "method": "POST",
+      "route": "/api/orders/{orderId}/confirm",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "denial-updateOrderStatus",
+      "method": "PUT",
+      "route": "/api/orders/{orderId}/status",
+      "role": "anonymous",
+      "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+      "status": 401,
+      "businessCode": "UNAUTHENTICATED",
+      "technique": "direct anonymous request through ZAP, passive inspection; no authenticated coverage claimed",
+      "placeholderIds": "Syntactic ID 1 only to exercise the pre-handler authentication boundary; no ownership claim."
+    },
+    {
+      "caseId": "question:aux-1-rule-10104",
+      "method": "GET",
+      "route": "/actuator/health",
+      "role": "anonymous",
+      "question": {
+        "id": "aux-1-rule-10104",
+        "ruleIds": [
+          10104
+        ],
+        "minimumStage": "boundary",
+        "basis": "Native input validation and response handling for discovered ByteMe surface",
+        "field": null
+      },
+      "readback": {
+        "id": "aux-1-rule-10104",
+        "status": "observed",
+        "unit": "question:aux-1-rule-10104",
+        "requests": 12,
+        "qualifyingRequests": 12,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:aux-1-rule-10104"
+        ]
+      },
+      "campaigns": [
+        "aux-1"
+      ]
+    },
+    {
+      "caseId": "question:token-email-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "question": {
+        "id": "token-email-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "processing",
+        "basis": "Credential lookup/comparison and SQL injection with real positive and negative login outcomes; no password reflection or response-header sink in source.",
+        "field": "email"
+      },
+      "readback": {
+        "id": "token-email-rule-40018",
+        "status": "observed",
+        "unit": "question:token-email-rule-40018",
+        "requests": 19,
+        "qualifyingRequests": 4,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:token-email-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "token-email"
+      ]
+    },
+    {
+      "caseId": "question:register-phone-valid-rule-909901",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-phone-valid-rule-909901",
+        "ruleIds": [
+          909901
+        ],
+        "minimumStage": "boundary",
+        "basis": "Native input validation and response handling for discovered ByteMe surface",
+        "field": "phone"
+      },
+      "readback": {
+        "id": "register-phone-valid-rule-909901",
+        "status": "observed",
+        "unit": "question:register-phone-valid-rule-909901",
+        "requests": 5,
+        "qualifyingRequests": 5,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-phone-valid-rule-909901"
+        ]
+      },
+      "campaigns": [
+        "register-phone-valid"
+      ]
+    },
+    {
+      "caseId": "question:register-phone-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-phone-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "phone"
+      },
+      "readback": {
+        "id": "register-phone-rule-40018",
+        "status": "observed",
+        "unit": "question:register-phone-rule-40018",
+        "requests": 5,
+        "qualifyingRequests": 5,
+        "stages": [
+          "boundary"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-phone-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "register-phone"
+      ]
+    },
+    {
+      "caseId": "question:aux-0-rule-10104",
+      "method": "GET",
+      "route": "/openapi.yaml",
+      "role": "anonymous",
+      "question": {
+        "id": "aux-0-rule-10104",
+        "ruleIds": [
+          10104
+        ],
+        "minimumStage": "boundary",
+        "basis": "Native input validation and response handling for discovered ByteMe surface",
+        "field": null
+      },
+      "readback": {
+        "id": "aux-0-rule-10104",
+        "status": "observed",
+        "unit": "question:aux-0-rule-10104",
+        "requests": 12,
+        "qualifyingRequests": 12,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:aux-0-rule-10104"
+        ]
+      },
+      "campaigns": [
+        "aux-0"
+      ]
+    },
+    {
+      "caseId": "question:register-email-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-email-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "email"
+      },
+      "readback": {
+        "id": "register-email-rule-40018",
+        "status": "observed",
+        "unit": "question:register-email-rule-40018",
+        "requests": 4,
+        "qualifyingRequests": 4,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-email-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "register-email"
+      ]
+    },
+    {
+      "caseId": "question:register-email-rule-40012",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-email-rule-40012",
+        "ruleIds": [
+          40012
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "email"
+      },
+      "readback": {
+        "id": "register-email-rule-40012",
+        "status": "observed",
+        "unit": "question:register-email-rule-40012",
+        "requests": 5,
+        "qualifyingRequests": 5,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-email-rule-40012"
+        ]
+      },
+      "campaigns": [
+        "register-email"
+      ]
+    },
+    {
+      "caseId": "question:foods-search-rule-40018",
+      "method": "GET",
+      "route": "/api/foods/search",
+      "role": "anonymous",
+      "question": {
+        "id": "foods-search-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Populated textual search reaches SQL LIKE handling; separately inspect reflection in JSON, without claiming browser execution.",
+        "field": null
+      },
+      "readback": {
+        "id": "foods-search-rule-40018",
+        "status": "observed",
+        "unit": "question:foods-search-rule-40018",
+        "requests": 40,
+        "qualifyingRequests": 40,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:foods-search-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "foods-search"
+      ]
+    },
+    {
+      "caseId": "question:foods-search-rule-40012",
+      "method": "GET",
+      "route": "/api/foods/search",
+      "role": "anonymous",
+      "question": {
+        "id": "foods-search-rule-40012",
+        "ruleIds": [
+          40012
+        ],
+        "minimumStage": "boundary",
+        "basis": "Populated textual search reaches SQL LIKE handling; separately inspect reflection in JSON, without claiming browser execution.",
+        "field": "q"
+      },
+      "readback": {
+        "id": "foods-search-rule-40012",
+        "status": "observed",
+        "unit": "question:foods-search-rule-40012",
+        "requests": 5,
+        "qualifyingRequests": 5,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:foods-search-rule-40012"
+        ]
+      },
+      "campaigns": [
+        "foods-search"
+      ]
+    },
+    {
+      "caseId": "question:register-fullName-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-fullName-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "fullName"
+      },
+      "readback": {
+        "id": "register-fullName-rule-40018",
+        "status": "observed",
+        "unit": "question:register-fullName-rule-40018",
+        "requests": 4,
+        "qualifyingRequests": 4,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-fullName-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "register-fullName"
+      ]
+    },
+    {
+      "caseId": "question:register-fullName-rule-40012",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-fullName-rule-40012",
+        "ruleIds": [
+          40012
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "fullName"
+      },
+      "readback": {
+        "id": "register-fullName-rule-40012",
+        "status": "observed",
+        "unit": "question:register-fullName-rule-40012",
+        "requests": 2,
+        "qualifyingRequests": 2,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-fullName-rule-40012"
+        ]
+      },
+      "campaigns": [
+        "register-fullName"
+      ]
+    },
+    {
+      "caseId": "question:foods-id-rule-40018",
+      "method": "GET",
+      "route": "/api/foods/1",
+      "role": "anonymous",
+      "question": {
+        "id": "foods-id-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Existing numeric selector; SQL/parser and header/error handling boundaries.",
+        "field": null
+      },
+      "readback": {
+        "id": "foods-id-rule-40018",
+        "status": "observed",
+        "unit": "question:foods-id-rule-40018",
+        "requests": 5,
+        "qualifyingRequests": 5,
+        "stages": [
+          "boundary"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:foods-id-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "foods-id"
+      ]
+    },
+    {
+      "caseId": "question:foods-id-rule-40003",
+      "method": "GET",
+      "route": "/api/foods/1",
+      "role": "anonymous",
+      "question": {
+        "id": "foods-id-rule-40003",
+        "ruleIds": [
+          40003
+        ],
+        "minimumStage": "boundary",
+        "basis": "Existing numeric selector; SQL/parser and header/error handling boundaries.",
+        "field": null
+      },
+      "readback": {
+        "id": "foods-id-rule-40003",
+        "status": "observed",
+        "unit": "question:foods-id-rule-40003",
+        "requests": 1,
+        "qualifyingRequests": 1,
+        "stages": [
+          "boundary"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:foods-id-rule-40003"
+        ]
+      },
+      "campaigns": [
+        "foods-id"
+      ]
+    },
+    {
+      "caseId": "question:register-password-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-password-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "password"
+      },
+      "readback": {
+        "id": "register-password-rule-40018",
+        "status": "observed",
+        "unit": "question:register-password-rule-40018",
+        "requests": 4,
+        "qualifyingRequests": 4,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-password-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "register-password"
+      ]
+    },
+    {
+      "caseId": "question:aux-4-rule-10104",
+      "method": "GET",
+      "route": "/error",
+      "role": "anonymous",
+      "question": {
+        "id": "aux-4-rule-10104",
+        "ruleIds": [
+          10104
+        ],
+        "minimumStage": "boundary",
+        "basis": "Native input validation and response handling for discovered ByteMe surface",
+        "field": null
+      },
+      "readback": {
+        "id": "aux-4-rule-10104",
+        "status": "observed",
+        "unit": "question:aux-4-rule-10104",
+        "requests": 12,
+        "qualifyingRequests": 12,
+        "stages": [
+          "boundary"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:aux-4-rule-10104"
+        ]
+      },
+      "campaigns": [
+        "aux-4"
+      ]
+    },
+    {
+      "caseId": "question:register-confirmPassword-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "question": {
+        "id": "register-confirmPassword-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+        "field": "confirmPassword"
+      },
+      "readback": {
+        "id": "register-confirmPassword-rule-40018",
+        "status": "observed",
+        "unit": "question:register-confirmPassword-rule-40018",
+        "requests": 4,
+        "qualifyingRequests": 4,
+        "stages": [
+          "boundary",
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:register-confirmPassword-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "register-confirmPassword"
+      ]
+    },
+    {
+      "caseId": "question:foods-category-rule-40018",
+      "method": "GET",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "question": {
+        "id": "foods-category-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "boundary",
+        "basis": "Numeric filter conversion/SQL boundary and CRLF handling; no textual rendering sink.",
+        "field": null
+      },
+      "readback": {
+        "id": "foods-category-rule-40018",
+        "status": "observed",
+        "unit": "question:foods-category-rule-40018",
+        "requests": 6,
+        "qualifyingRequests": 6,
+        "stages": [
+          "boundary"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:foods-category-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "foods-category"
+      ]
+    },
+    {
+      "caseId": "question:foods-category-rule-40003",
+      "method": "GET",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "question": {
+        "id": "foods-category-rule-40003",
+        "ruleIds": [
+          40003
+        ],
+        "minimumStage": "boundary",
+        "basis": "Numeric filter conversion/SQL boundary and CRLF handling; no textual rendering sink.",
+        "field": null
+      },
+      "readback": {
+        "id": "foods-category-rule-40003",
+        "status": "observed",
+        "unit": "question:foods-category-rule-40003",
+        "requests": 7,
+        "qualifyingRequests": 7,
+        "stages": [
+          "boundary"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:foods-category-rule-40003"
+        ]
+      },
+      "campaigns": [
+        "foods-category"
+      ]
+    },
+    {
+      "caseId": "question:aux-3-rule-10104",
+      "method": "GET",
+      "route": "/v3/api-docs/swagger-config",
+      "role": "anonymous",
+      "question": {
+        "id": "aux-3-rule-10104",
+        "ruleIds": [
+          10104
+        ],
+        "minimumStage": "boundary",
+        "basis": "Native input validation and response handling for discovered ByteMe surface",
+        "field": null
+      },
+      "readback": {
+        "id": "aux-3-rule-10104",
+        "status": "observed",
+        "unit": "question:aux-3-rule-10104",
+        "requests": 12,
+        "qualifyingRequests": 12,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:aux-3-rule-10104"
+        ]
+      },
+      "campaigns": [
+        "aux-3"
+      ]
+    },
+    {
+      "caseId": "question:token-password-rule-40018",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "question": {
+        "id": "token-password-rule-40018",
+        "ruleIds": [
+          40018
+        ],
+        "minimumStage": "processing",
+        "basis": "Credential lookup/comparison and SQL injection with real positive and negative login outcomes; no password reflection or response-header sink in source.",
+        "field": "password"
+      },
+      "readback": {
+        "id": "token-password-rule-40018",
+        "status": "observed",
+        "unit": "question:token-password-rule-40018",
+        "requests": 19,
+        "qualifyingRequests": 19,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:token-password-rule-40018"
+        ]
+      },
+      "campaigns": [
+        "token-password"
+      ]
+    },
+    {
+      "caseId": "question:aux-2-rule-10104",
+      "method": "GET",
+      "route": "/swagger-ui/index.html",
+      "role": "anonymous",
+      "question": {
+        "id": "aux-2-rule-10104",
+        "ruleIds": [
+          10104
+        ],
+        "minimumStage": "boundary",
+        "basis": "Native input validation and response handling for discovered ByteMe surface",
+        "field": null
+      },
+      "readback": {
+        "id": "aux-2-rule-10104",
+        "status": "observed",
+        "unit": "question:aux-2-rule-10104",
+        "requests": 12,
+        "qualifyingRequests": 12,
+        "stages": [
+          "processing"
+        ],
+        "missing": null,
+        "missingFields": [],
+        "evidenceUnits": [
+          "question:aux-2-rule-10104"
+        ]
+      },
+      "campaigns": [
+        "aux-2"
+      ]
+    },
+    {
+      "caseId": "source:registerCustomer",
+      "operationId": "registerCustomer",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "sourceInputs": [
+        {
+          "vector": "JSON-body",
+          "field": "fullName"
+        },
+        {
+          "vector": "JSON-body",
+          "field": "email"
+        },
+        {
+          "vector": "JSON-body",
+          "field": "phone"
+        },
+        {
+          "vector": "JSON-body",
+          "field": "password"
+        },
+        {
+          "vector": "JSON-body",
+          "field": "confirmPassword"
+        }
+      ],
+      "observedUnits": [
+        "source-active-result-read",
+        "source-input:JSON-body:fullName",
+        "source-input:JSON-body:email",
+        "source-input:JSON-body:phone",
+        "source-input:JSON-body:password",
+        "source-input:JSON-body:confirmPassword"
+      ],
+      "missing": [],
+      "operationIds": [
+        "campaign-register-phone-valid",
+        "campaign-register-phone",
+        "campaign-register-email",
+        "campaign-register-fullName",
+        "campaign-register-password",
+        "campaign-register-confirmPassword"
+      ]
+    },
+    {
+      "caseId": "source:issueAccessToken",
+      "operationId": "issueAccessToken",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "sourceInputs": [
+        {
+          "vector": "JSON-body",
+          "field": "email"
+        },
+        {
+          "vector": "JSON-body",
+          "field": "password"
+        }
+      ],
+      "observedUnits": [
+        "source-active-result-read",
+        "source-input:JSON-body:email",
+        "source-input:JSON-body:password"
+      ],
+      "missing": [],
+      "operationIds": [
+        "campaign-token-email",
+        "campaign-token-password"
+      ]
+    },
+    {
+      "caseId": "source:listActiveFoods",
+      "operationId": "listActiveFoods",
+      "method": "GET",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "sourceInputs": [
+        {
+          "vector": "query",
+          "field": "categoryId"
+        }
+      ],
+      "observedUnits": [
+        "source-active-result-read",
+        "source-input:query:categoryId"
+      ],
+      "missing": [],
+      "operationIds": [
+        "campaign-foods-category"
+      ]
+    },
+    {
+      "caseId": "source:searchActiveFoods",
+      "operationId": "searchActiveFoods",
+      "method": "GET",
+      "route": "/api/foods/search",
+      "role": "anonymous",
+      "sourceInputs": [
+        {
+          "vector": "query",
+          "field": "q"
+        },
+        {
+          "vector": "query",
+          "field": "categoryId"
+        }
+      ],
+      "observedUnits": [
+        "source-active-result-read",
+        "source-input:query:q",
+        "source-input:query:categoryId"
+      ],
+      "missing": [],
+      "operationIds": [
+        "campaign-foods-search"
+      ]
+    },
+    {
+      "caseId": "source:getActiveFood",
+      "operationId": "getActiveFood",
+      "method": "GET",
+      "route": "/api/foods/{id}",
+      "role": "anonymous",
+      "sourceInputs": [
+        {
+          "vector": "path",
+          "field": "id"
+        }
+      ],
+      "observedUnits": [
+        "source-active-result-read",
+        "source-input:path:id"
+      ],
+      "missing": [],
+      "operationIds": [
+        "campaign-foods-search",
+        "campaign-foods-id"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "campaign-foods-category",
+      "caseId": "foods-category",
+      "method": "GET",
+      "route": "/api/foods",
+      "query": "?categoryId=1",
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "0",
+      "startedAt": "2026-10-25T17:54:03.600283+07:00",
+      "finishedAt": "2026-10-25T17:54:14.270155+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018,
+        40003
+      ],
+      "rulesObservedAtApplication": {
+        "40018": 9,
+        "40003": 7,
+        "100043": 1
+      },
+      "applicationRequests": 17,
+      "responseStatuses": {
+        "400": 13,
+        "200": 4
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "foods-category-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Numeric filter conversion/SQL boundary and CRLF handling; no textual rendering sink.",
+          "field": null
+        },
+        {
+          "id": "foods-category-rule-40003",
+          "ruleIds": [
+            40003
+          ],
+          "minimumStage": "boundary",
+          "basis": "Numeric filter conversion/SQL boundary and CRLF handling; no textual rendering sink.",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "campaign-foods-search",
+      "caseId": "foods-search",
+      "method": "GET",
+      "route": "/api/foods/search",
+      "query": "?q=Ph&categoryId=1",
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "1",
+      "startedAt": "2026-10-25T17:54:20.960463+07:00",
+      "finishedAt": "2026-10-25T17:54:53.010270+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018,
+        40012
+      ],
+      "rulesObservedAtApplication": {
+        "40012": 10,
+        "40018": 46,
+        "100043": 1
+      },
+      "applicationRequests": 57,
+      "responseStatuses": {
+        "200": 30,
+        "400": 27
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "MEDIUM",
+      "alertThreshold": "LOW",
+      "questions": [
+        {
+          "id": "foods-search-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Populated textual search reaches SQL LIKE handling; separately inspect reflection in JSON, without claiming browser execution.",
+          "field": null
+        },
+        {
+          "id": "foods-search-rule-40012",
+          "ruleIds": [
+            40012
+          ],
+          "minimumStage": "boundary",
+          "basis": "Populated textual search reaches SQL LIKE handling; separately inspect reflection in JSON, without claiming browser execution.",
+          "field": "q"
+        }
+      ]
+    },
+    {
+      "id": "campaign-foods-id",
+      "caseId": "foods-id",
+      "method": "GET",
+      "route": "/api/foods/1",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "2",
+      "startedAt": "2026-10-25T17:54:59.708865+07:00",
+      "finishedAt": "2026-10-25T17:55:12.732144+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018,
+        40003
+      ],
+      "rulesObservedAtApplication": {
+        "unattributed": 1,
+        "40018": 17,
+        "40003": 1,
+        "100043": 1
+      },
+      "applicationRequests": 20,
+      "responseStatuses": {
+        "404": 1,
+        "200": 13,
+        "400": 6
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "foods-id-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Existing numeric selector; SQL/parser and header/error handling boundaries.",
+          "field": null
+        },
+        {
+          "id": "foods-id-rule-40003",
+          "ruleIds": [
+            40003
+          ],
+          "minimumStage": "boundary",
+          "basis": "Existing numeric selector; SQL/parser and header/error handling boundaries.",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "campaign-register-fullName",
+      "caseId": "register-fullName",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "3",
+      "startedAt": "2026-10-25T17:55:20.869280+07:00",
+      "finishedAt": "2026-10-25T17:55:28.733472+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018,
+        40012
+      ],
+      "rulesObservedAtApplication": {
+        "40012": 2,
+        "40018": 7
+      },
+      "applicationRequests": 9,
+      "responseStatuses": {
+        "201": 9
+      },
+      "mutatedInputRequests": 6,
+      "mutatedInputStatuses": {
+        "201": 6
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "LOW",
+      "questions": [
+        {
+          "id": "register-fullName-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "fullName"
+        },
+        {
+          "id": "register-fullName-rule-40012",
+          "ruleIds": [
+            40012
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "fullName"
+        }
+      ]
+    },
+    {
+      "id": "campaign-register-email",
+      "caseId": "register-email",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "4",
+      "startedAt": "2026-10-25T17:55:35.172785+07:00",
+      "finishedAt": "2026-10-25T17:55:43.063940+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018,
+        40012
+      ],
+      "rulesObservedAtApplication": {
+        "40012": 5,
+        "40018": 7
+      },
+      "applicationRequests": 12,
+      "responseStatuses": {
+        "400": 6,
+        "201": 6
+      },
+      "mutatedInputRequests": 9,
+      "mutatedInputStatuses": {
+        "400": 6,
+        "201": 3
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "LOW",
+      "questions": [
+        {
+          "id": "register-email-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "email"
+        },
+        {
+          "id": "register-email-rule-40012",
+          "ruleIds": [
+            40012
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "email"
+        }
+      ]
+    },
+    {
+      "id": "campaign-register-phone",
+      "caseId": "register-phone",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "5",
+      "startedAt": "2026-10-25T17:55:49.566950+07:00",
+      "finishedAt": "2026-10-25T17:55:55.156825+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018
+      ],
+      "rulesObservedAtApplication": {
+        "40018": 8
+      },
+      "applicationRequests": 8,
+      "responseStatuses": {
+        "400": 5,
+        "201": 3
+      },
+      "mutatedInputRequests": 5,
+      "mutatedInputStatuses": {
+        "400": 5
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "register-phone-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "phone"
+        }
+      ]
+    },
+    {
+      "id": "campaign-register-password",
+      "caseId": "register-password",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "6",
+      "startedAt": "2026-10-25T17:56:01.559786+07:00",
+      "finishedAt": "2026-10-25T17:56:07.018998+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018
+      ],
+      "rulesObservedAtApplication": {
+        "40018": 7
+      },
+      "applicationRequests": 7,
+      "responseStatuses": {
+        "400": 2,
+        "201": 5
+      },
+      "mutatedInputRequests": 4,
+      "mutatedInputStatuses": {
+        "400": 2,
+        "201": 2
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "register-password-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "password"
+        }
+      ]
+    },
+    {
+      "id": "campaign-register-confirmPassword",
+      "caseId": "register-confirmPassword",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "7",
+      "startedAt": "2026-10-25T17:56:13.971618+07:00",
+      "finishedAt": "2026-10-25T17:56:19.435435+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018
+      ],
+      "rulesObservedAtApplication": {
+        "40018": 7
+      },
+      "applicationRequests": 7,
+      "responseStatuses": {
+        "400": 2,
+        "201": 5
+      },
+      "mutatedInputRequests": 4,
+      "mutatedInputStatuses": {
+        "400": 2,
+        "201": 2
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "register-confirmPassword-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "boundary",
+          "basis": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "field": "confirmPassword"
+        }
+      ]
+    },
+    {
+      "id": "campaign-register-phone-valid",
+      "caseId": "register-phone-valid",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "8",
+      "startedAt": "2026-10-25T17:56:28.574562+07:00",
+      "finishedAt": "2026-10-25T17:56:34.073361+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        909901
+      ],
+      "rulesObservedAtApplication": {
+        "909901": 5
+      },
+      "applicationRequests": 5,
+      "responseStatuses": {
+        "201": 3,
+        "400": 2
+      },
+      "mutatedInputRequests": 5,
+      "mutatedInputStatuses": {
+        "201": 3,
+        "400": 2
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "register-phone-valid-rule-909901",
+          "ruleIds": [
+            909901
+          ],
+          "minimumStage": "boundary",
+          "basis": "Native input validation and response handling for discovered ByteMe surface",
+          "field": "phone"
+        }
+      ]
+    },
+    {
+      "id": "campaign-token-email",
+      "caseId": "token-email",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "9",
+      "startedAt": "2026-10-25T17:56:42.225897+07:00",
+      "finishedAt": "2026-10-25T17:56:54.825970+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018
+      ],
+      "rulesObservedAtApplication": {
+        "40018": 22
+      },
+      "applicationRequests": 22,
+      "responseStatuses": {
+        "400": 15,
+        "200": 5,
+        "401": 2
+      },
+      "mutatedInputRequests": 19,
+      "mutatedInputStatuses": {
+        "400": 15,
+        "200": 2,
+        "401": 2
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "MEDIUM",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "token-email-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "processing",
+          "basis": "Credential lookup/comparison and SQL injection with real positive and negative login outcomes; no password reflection or response-header sink in source.",
+          "field": "email"
+        }
+      ]
+    },
+    {
+      "id": "campaign-token-password",
+      "caseId": "token-password",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via ByteMe-scoped anonymous adapter using existing native ascan and baseline-binding primitives",
+      "nativeScanId": "10",
+      "startedAt": "2026-10-25T17:57:01.246627+07:00",
+      "finishedAt": "2026-10-25T17:57:16.225111+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        40018
+      ],
+      "rulesObservedAtApplication": {
+        "40018": 22
+      },
+      "applicationRequests": 22,
+      "responseStatuses": {
+        "401": 19,
+        "200": 3
+      },
+      "mutatedInputRequests": 19,
+      "mutatedInputStatuses": {
+        "401": 19
+      },
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "MEDIUM",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "token-password-rule-40018",
+          "ruleIds": [
+            40018
+          ],
+          "minimumStage": "processing",
+          "basis": "Credential lookup/comparison and SQL injection with real positive and negative login outcomes; no password reflection or response-header sink in source.",
+          "field": "password"
+        }
+      ]
+    },
+    {
+      "id": "campaign-aux-0",
+      "caseId": "aux-0",
+      "method": "GET",
+      "route": "/openapi.yaml",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "11",
+      "startedAt": "2026-10-25T17:57:23.811898+07:00",
+      "finishedAt": "2026-10-25T17:57:32.040976+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        10104
+      ],
+      "rulesObservedAtApplication": {
+        "10104": 12,
+        "100043": 1
+      },
+      "applicationRequests": 13,
+      "responseStatuses": {
+        "200": 13
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "aux-0-rule-10104",
+          "ruleIds": [
+            10104
+          ],
+          "minimumStage": "boundary",
+          "basis": "Native input validation and response handling for discovered ByteMe surface",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "campaign-aux-1",
+      "caseId": "aux-1",
+      "method": "GET",
+      "route": "/actuator/health",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "12",
+      "startedAt": "2026-10-25T17:57:38.820591+07:00",
+      "finishedAt": "2026-10-25T17:57:47.144079+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        10104
+      ],
+      "rulesObservedAtApplication": {
+        "10104": 12,
+        "100043": 1
+      },
+      "applicationRequests": 13,
+      "responseStatuses": {
+        "200": 13
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "aux-1-rule-10104",
+          "ruleIds": [
+            10104
+          ],
+          "minimumStage": "boundary",
+          "basis": "Native input validation and response handling for discovered ByteMe surface",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "campaign-aux-2",
+      "caseId": "aux-2",
+      "method": "GET",
+      "route": "/swagger-ui/index.html",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "13",
+      "startedAt": "2026-10-25T17:57:53.861259+07:00",
+      "finishedAt": "2026-10-25T17:58:02.153450+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        10104
+      ],
+      "rulesObservedAtApplication": {
+        "10104": 12,
+        "100043": 1
+      },
+      "applicationRequests": 13,
+      "responseStatuses": {
+        "200": 13
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "aux-2-rule-10104",
+          "ruleIds": [
+            10104
+          ],
+          "minimumStage": "boundary",
+          "basis": "Native input validation and response handling for discovered ByteMe surface",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "campaign-aux-3",
+      "caseId": "aux-3",
+      "method": "GET",
+      "route": "/v3/api-docs/swagger-config",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "14",
+      "startedAt": "2026-10-25T17:58:08.860574+07:00",
+      "finishedAt": "2026-10-25T17:58:17.126798+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        10104
+      ],
+      "rulesObservedAtApplication": {
+        "10104": 12
+      },
+      "applicationRequests": 12,
+      "responseStatuses": {
+        "200": 12
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "aux-3-rule-10104",
+          "ruleIds": [
+            10104
+          ],
+          "minimumStage": "boundary",
+          "basis": "Native input validation and response handling for discovered ByteMe surface",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "campaign-aux-4",
+      "caseId": "aux-4",
+      "method": "GET",
+      "route": "/error",
+      "query": null,
+      "role": "anonymous",
+      "actor": "no target session or identity",
+      "technique": "native ZAP active via guided MCP",
+      "nativeScanId": "15",
+      "startedAt": "2026-10-25T17:58:23.897941+07:00",
+      "finishedAt": "2026-10-25T17:58:32.316536+07:00",
+      "terminal": true,
+      "rulesRequested": [
+        10104
+      ],
+      "rulesObservedAtApplication": {
+        "10104": 12
+      },
+      "applicationRequests": 12,
+      "responseStatuses": {
+        "500": 12
+      },
+      "mutatedInputRequests": null,
+      "mutatedInputStatuses": null,
+      "result": "Completed; application responses read and analyzed",
+      "policyStrength": "LOW",
+      "alertThreshold": "MEDIUM",
+      "questions": [
+        {
+          "id": "aux-4-rule-10104",
+          "ruleIds": [
+            10104
+          ],
+          "minimumStage": "boundary",
+          "basis": "Native input validation and response handling for discovered ByteMe surface",
+          "field": null
+        }
+      ]
+    },
+    {
+      "id": "request-1",
+      "caseId": "health",
+      "at": "2026-10-25T17:53:52.961241+07:00",
+      "method": "GET",
+      "route": "/actuator/health",
+      "role": "anonymous",
+      "technique": "seed",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-2",
+      "caseId": "live-openapi",
+      "at": "2026-10-25T17:53:55.222781+07:00",
+      "method": "GET",
+      "route": "/openapi.yaml",
+      "role": "anonymous",
+      "technique": "runtime discovery",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-3",
+      "caseId": "catalog-discovery",
+      "at": "2026-10-25T17:53:57.776052+07:00",
+      "method": "GET",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "technique": "populated catalog discovery",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-4",
+      "caseId": "foods-category",
+      "at": "2026-10-25T17:54:01.361894+07:00",
+      "method": "GET",
+      "route": "/api/foods?categoryId=1",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-22",
+      "caseId": "foods-search",
+      "at": "2026-10-25T17:54:18.758258+07:00",
+      "method": "GET",
+      "route": "/api/foods/search?q=Ph&categoryId=1",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-80",
+      "caseId": "foods-id",
+      "at": "2026-10-25T17:54:57.493841+07:00",
+      "method": "GET",
+      "route": "/api/foods/1",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-101",
+      "caseId": "register-fullName",
+      "at": "2026-10-25T17:55:18.642584+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 201,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-111",
+      "caseId": "register-email",
+      "at": "2026-10-25T17:55:32.973506+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 201,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-124",
+      "caseId": "register-phone",
+      "at": "2026-10-25T17:55:47.275588+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 201,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-133",
+      "caseId": "register-password",
+      "at": "2026-10-25T17:55:59.356416+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 201,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-141",
+      "caseId": "register-confirmPassword",
+      "at": "2026-10-25T17:56:11.767968+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 201,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-149",
+      "caseId": "register-phone-valid",
+      "at": "2026-10-25T17:56:26.357465+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 201,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-155",
+      "caseId": "token-email",
+      "at": "2026-10-25T17:56:40.016479+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-178",
+      "caseId": "token-password",
+      "at": "2026-10-25T17:56:59.015931+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-201",
+      "caseId": "aux-0",
+      "at": "2026-10-25T17:57:21.601442+07:00",
+      "method": "GET",
+      "route": "/openapi.yaml",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-215",
+      "caseId": "aux-1",
+      "at": "2026-10-25T17:57:36.520645+07:00",
+      "method": "GET",
+      "route": "/actuator/health",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-229",
+      "caseId": "aux-2",
+      "at": "2026-10-25T17:57:51.629431+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/index.html",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-243",
+      "caseId": "aux-3",
+      "at": "2026-10-25T17:58:06.661201+07:00",
+      "method": "GET",
+      "route": "/v3/api-docs/swagger-config",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-256",
+      "caseId": "aux-4",
+      "at": "2026-10-25T17:58:21.636099+07:00",
+      "method": "GET",
+      "route": "/error",
+      "role": "anonymous",
+      "technique": "active-baseline",
+      "status": 500,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-269",
+      "caseId": "denial-createFood",
+      "at": "2026-10-25T17:58:36.034055+07:00",
+      "method": "POST",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-270",
+      "caseId": "denial-updateFood",
+      "at": "2026-10-25T17:58:36.920059+07:00",
+      "method": "PUT",
+      "route": "/api/foods/1",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-271",
+      "caseId": "denial-deactivateFood",
+      "at": "2026-10-25T17:58:37.798962+07:00",
+      "method": "DELETE",
+      "route": "/api/foods/1",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-272",
+      "caseId": "denial-getCurrentCart",
+      "at": "2026-10-25T17:58:38.680901+07:00",
+      "method": "GET",
+      "route": "/api/cart",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-273",
+      "caseId": "denial-addCartItem",
+      "at": "2026-10-25T17:58:39.566842+07:00",
+      "method": "POST",
+      "route": "/api/cart/items",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-274",
+      "caseId": "denial-updateCartItem",
+      "at": "2026-10-25T17:58:40.459793+07:00",
+      "method": "PUT",
+      "route": "/api/cart/items/1",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-275",
+      "caseId": "denial-removeCartItem",
+      "at": "2026-10-25T17:58:41.347333+07:00",
+      "method": "DELETE",
+      "route": "/api/cart/items/1",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-276",
+      "caseId": "denial-createOrder",
+      "at": "2026-10-25T17:58:42.235586+07:00",
+      "method": "POST",
+      "route": "/api/orders",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-277",
+      "caseId": "denial-listOrders",
+      "at": "2026-10-25T17:58:43.133423+07:00",
+      "method": "GET",
+      "route": "/api/orders",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-278",
+      "caseId": "denial-getOrder",
+      "at": "2026-10-25T17:58:44.019422+07:00",
+      "method": "GET",
+      "route": "/api/orders/1",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-279",
+      "caseId": "denial-cancelOrder",
+      "at": "2026-10-25T17:58:45.097215+07:00",
+      "method": "DELETE",
+      "route": "/api/orders/1",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-280",
+      "caseId": "denial-confirmOrder",
+      "at": "2026-10-25T17:58:46.055528+07:00",
+      "method": "POST",
+      "route": "/api/orders/1/confirm",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-281",
+      "caseId": "denial-updateOrderStatus",
+      "at": "2026-10-25T17:58:46.982939+07:00",
+      "method": "PUT",
+      "route": "/api/orders/1/status",
+      "role": "anonymous",
+      "technique": "anonymous protected-denial control",
+      "status": 401,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-282",
+      "caseId": "aux-control-0",
+      "at": "2026-10-25T17:58:47.880789+07:00",
+      "method": "GET",
+      "route": "/swagger-ui.html",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 302,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-283",
+      "caseId": "aux-control-1",
+      "at": "2026-10-25T17:58:48.786624+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-ui.css",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-284",
+      "caseId": "aux-control-2",
+      "at": "2026-10-25T17:58:49.715863+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/index.css",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-285",
+      "caseId": "aux-control-3",
+      "at": "2026-10-25T17:58:50.625464+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-ui-bundle.js",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-286",
+      "caseId": "aux-control-4",
+      "at": "2026-10-25T17:58:51.731026+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-ui-standalone-preset.js",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-287",
+      "caseId": "aux-control-5",
+      "at": "2026-10-25T17:58:52.674836+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/swagger-initializer.js",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-288",
+      "caseId": "aux-control-6",
+      "at": "2026-10-25T17:58:53.603203+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/favicon-32x32.png",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-289",
+      "caseId": "aux-control-7",
+      "at": "2026-10-25T17:58:54.491479+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/favicon-16x16.png",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-290",
+      "caseId": "aux-control-8",
+      "at": "2026-10-25T17:58:55.386864+07:00",
+      "method": "GET",
+      "route": "/swagger-ui/oauth2-redirect.html",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-291",
+      "caseId": "aux-control-9",
+      "at": "2026-10-25T17:58:56.269498+07:00",
+      "method": "GET",
+      "route": "/actuator/health/liveness",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 404,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-292",
+      "caseId": "aux-control-10",
+      "at": "2026-10-25T17:58:57.153776+07:00",
+      "method": "GET",
+      "route": "/actuator/health/readiness",
+      "role": "anonymous",
+      "technique": "public auxiliary baseline/passive",
+      "status": 404,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-293",
+      "caseId": "register-malformed",
+      "at": "2026-10-25T17:58:58.030616+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "content-type/parser control",
+      "status": 400,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-294",
+      "caseId": "register-xml",
+      "at": "2026-10-25T17:58:58.915729+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "content-type/parser control",
+      "status": 415,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-295",
+      "caseId": "register-method-get",
+      "at": "2026-10-25T17:58:59.815602+07:00",
+      "method": "GET",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "HTTP method control",
+      "status": 405,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-296",
+      "caseId": "token-malformed",
+      "at": "2026-10-25T17:59:00.718020+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "content-type/parser control",
+      "status": 400,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-297",
+      "caseId": "token-xml",
+      "at": "2026-10-25T17:59:01.602961+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "content-type/parser control",
+      "status": 415,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-298",
+      "caseId": "token-method-get",
+      "at": "2026-10-25T17:59:02.500612+07:00",
+      "method": "GET",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "HTTP method control",
+      "status": 405,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-299",
+      "caseId": "readback-register-fullName",
+      "at": "2026-10-25T17:59:04.845003+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "public login post-state readback",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-300",
+      "caseId": "readback-register-email",
+      "at": "2026-10-25T17:59:05.865122+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "public login post-state readback",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-301",
+      "caseId": "readback-register-phone-valid",
+      "at": "2026-10-25T17:59:06.855691+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "public login post-state readback",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-302",
+      "caseId": "readback-register-password",
+      "at": "2026-10-25T17:59:07.855191+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "public login post-state readback",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-303",
+      "caseId": "readback-register-confirmPassword",
+      "at": "2026-10-25T17:59:08.868872+07:00",
+      "method": "POST",
+      "route": "/api/auth/token",
+      "role": "anonymous",
+      "technique": "public login post-state readback",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-304",
+      "caseId": "register-duplicate-control",
+      "at": "2026-10-25T17:59:09.845453+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "duplicate-identity control",
+      "status": 409,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-305",
+      "caseId": "register-mismatch-control",
+      "at": "2026-10-25T17:59:10.725072+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "password dependency validation control",
+      "status": 400,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-306",
+      "caseId": "catalog-semantic-0",
+      "at": "2026-10-25T17:59:11.618622+07:00",
+      "method": "GET",
+      "route": "/api/foods",
+      "role": "anonymous",
+      "technique": "catalog positive/literal-wildcard/validation/not-found control",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-307",
+      "caseId": "catalog-semantic-1",
+      "at": "2026-10-25T17:59:12.501141+07:00",
+      "method": "GET",
+      "route": "/api/foods/search?q=%25",
+      "role": "anonymous",
+      "technique": "catalog positive/literal-wildcard/validation/not-found control",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-308",
+      "caseId": "catalog-semantic-2",
+      "at": "2026-10-25T17:59:13.391422+07:00",
+      "method": "GET",
+      "route": "/api/foods/search?q=%5F",
+      "role": "anonymous",
+      "technique": "catalog positive/literal-wildcard/validation/not-found control",
+      "status": 200,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-309",
+      "caseId": "catalog-semantic-3",
+      "at": "2026-10-25T17:59:14.277482+07:00",
+      "method": "GET",
+      "route": "/api/foods/search?q=",
+      "role": "anonymous",
+      "technique": "catalog positive/literal-wildcard/validation/not-found control",
+      "status": 400,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "request-310",
+      "caseId": "catalog-semantic-4",
+      "at": "2026-10-25T17:59:15.175700+07:00",
+      "method": "GET",
+      "route": "/api/foods/999999999",
+      "role": "anonymous",
+      "technique": "catalog positive/literal-wildcard/validation/not-found control",
+      "status": 404,
+      "result": "Application response read; this request alone is not active DAST coverage"
+    },
+    {
+      "id": "login-fixture-226",
+      "at": "2026-10-25T17:56:39.389771+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "fixture preparation",
+      "status": 201,
+      "result": "Created fresh CUSTOMER credential fixture; sent through the product adapter, not counted as ZAP active traffic"
+    },
+    {
+      "id": "login-fixture-255",
+      "at": "2026-10-25T17:57:02.967283+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "fixture preparation",
+      "status": 201,
+      "result": "Created fresh CUSTOMER credential fixture; sent through the product adapter, not counted as ZAP active traffic"
+    },
+    {
+      "id": "login-fixture-263",
+      "at": "2026-10-25T17:57:07.453490+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "fixture preparation",
+      "status": 201,
+      "result": "Created fresh CUSTOMER credential fixture; sent through the product adapter, not counted as ZAP active traffic"
+    },
+    {
+      "id": "login-fixture-271",
+      "at": "2026-10-25T17:57:11.952071+07:00",
+      "method": "POST",
+      "route": "/api/auth/register",
+      "role": "anonymous",
+      "technique": "fixture preparation",
+      "status": 201,
+      "result": "Created fresh CUSTOMER credential fixture; sent through the product adapter, not counted as ZAP active traffic"
+    }
+  ],
+  "executionSummary": {
+    "activeScans": 16,
+    "allActiveTerminal": true,
+    "applicationRequestsLogged": 310,
+    "activeApplicationRequests": 249,
+    "fixtureRequestsOutsideZAP": 4,
+    "passiveBacklogRemaining": 0,
+    "passiveActiveTasks": 0,
+    "alertMessagesInspected": 37,
+    "alertsFromGuardResponses": 0,
+    "newAccountsCreated": 41
+  },
+  "alertSummary": {
+    "groupCount": 9,
+    "instanceCount": 105,
+    "groupsBySeverity": {
+      "Medium": 2,
+      "Low": 3,
+      "Informational": 4
+    },
+    "instancesBySeverity": {
+      "Low": 68,
+      "Informational": 34,
+      "Medium": 3
+    },
+    "groupsBySource": {
+      "ZAP": 9,
+      "direct": 0
+    },
+    "instancesBySource": {
+      "ZAP": 105,
+      "direct": 0
+    },
+    "groupsByTechnique": {
+      "passive": 7,
+      "active": 2
+    },
+    "instancesByTechnique": {
+      "active": 25,
+      "passive": 80
+    },
+    "counting": "A group is native pluginId + severity + confidence. Instances are all distinct current native alert IDs; the standard report includes bounded samples and its smaller instance count is not the denominator."
+  },
+  "errorsAndRecovery": [],
+  "limitations": [
+    {
+      "kind": "assessment-interpretation",
+      "scope": "whole requested track",
+      "detail": "Completion means the discovered public backend operations and their selected applicable input techniques were executed and reconciled. It does not certify absence of vulnerabilities or exhaust every payload/rule combination."
+    },
+    {
+      "kind": "scope",
+      "scope": "authenticated APIs, BOLA and frontend execution",
+      "detail": "Only BE anonymous was requested. Protected calls are denial controls. No authenticated business traffic or browser exploitation was performed."
+    },
+    {
+      "kind": "runtime-provenance",
+      "scope": "source-to-image",
+      "detail": "Docker Compose labels, origin, health and runtime OpenAPI matched the supplied project. Source HEAD was recorded; exact application image-to-source build attestation is unavailable."
+    },
+    {
+      "kind": "guarded-payload-selection",
+      "scope": "some path-changing native probes",
+      "detail": "Guard denied method changes, out-of-case routes, extra path segments and decoded slash/CR/LF variants. They receive no delivered application coverage credit. Public input coverage is based on the actually delivered field/path mutations, not scan progress or those denied probes."
+    },
+    {
+      "kind": "finding-impact",
+      "scope": "public Swagger UI and /error",
+      "detail": "Native advisory fingerprinting and hardening alerts are retained at native severity/confidence. Exploit reachability and external advisory accuracy were not independently established. Generic /error and JavaScript numeric matches have no demonstrated sensitive disclosure impact."
+    },
+    {
+      "kind": "fixture-retention",
+      "scope": "new CUSTOMER accounts",
+      "detail": "41 accounts created by this run are retained. No public account deletion API exists in discovered source/spec; authenticated/admin cleanup or DB deletion would extend this BE-anonymous task. Private identifiers are retained locally for later authorized cleanup."
+    }
+  ],
+  "securityConclusion": "Native findings retained with context; no claim of product safety. Selected question completion follows current reconciliation.",
+  "cleanup": {
+    "status": "complete",
+    "ownedContainersRemoved": [
+      "zpa-bmclean434e9d-net",
+      "zpa-bmclean434e9d-fixture",
+      "zpa-bmclean434e9d-zap",
+      "zpa-bmclean434e9d-mcp"
+    ],
+    "at": 1792926025.139271,
+    "privateRetention": "Working root access restricted to owner after owned scanner containers were removed; raw credentials retained private."
+  },
+  "retainedFixtures": {
+    "accounts": 41,
+    "credentialMaterial": "Local private only; no credentials, tokens or cookies included here."
+  },
+  "reportGeneratedAt": "2026-10-25T18:22:13.456001+07:00",
+  "fixturePlanning": {
+    "basis": "Previous successful native creates and baselines restricted to newly selected rule sets; login fixture rotation from observed quota. Forecast only, not a pass threshold or coverage source. LOW alert threshold may change rule behavior.",
+    "estimatedAccountCreates": 41,
+    "breakdown": {
+      "loginFixtures": 4,
+      "register-fullName": 10,
+      "register-email": 7,
+      "register-phone": 4,
+      "register-password": 6,
+      "register-confirmPassword": 6,
+      "register-phone-valid": 4
+    },
+    "planningTiming": "Reconstructed from prior working traffic after current execution; future discovery records this before workload.",
+    "actualRetainedAccounts": 41,
+    "deltaFromForecast": 0,
+    "retentionReason": "No public account delete API; do not perform DB/admin deletion outside this track."
+  },
+  "taskCompletion": "complete",
+  "responsibilityReconciliation": {
+    "taskCompletion": "complete",
+    "cases": [
+      {
+        "caseId": "register-fullName",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "register-email",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "register-phone",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "register-password",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "register-confirmPassword",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "token-email",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "token-password",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "foods-category-categoryId",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "foods-search-q",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "foods-search-categoryId",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "foods-id",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "public-auth-contract-controls",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-0",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-1",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-2",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-3",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-4",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-0",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-1",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-2",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-3",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-4",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-5",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-6",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-7",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-8",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-9",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "aux-control-10",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-createFood",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-updateFood",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-deactivateFood",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-getCurrentCart",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-addCartItem",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-updateCartItem",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-removeCartItem",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-createOrder",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-listOrders",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-getOrder",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-cancelOrder",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-confirmOrder",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "denial-updateOrderStatus",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:aux-1-rule-10104",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:token-email-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-phone-valid-rule-909901",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-phone-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:aux-0-rule-10104",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-email-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-email-rule-40012",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:foods-search-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:foods-search-rule-40012",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-fullName-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-fullName-rule-40012",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:foods-id-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:foods-id-rule-40003",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-password-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:aux-4-rule-10104",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:register-confirmPassword-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:foods-category-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:foods-category-rule-40003",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:aux-3-rule-10104",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:token-password-rule-40018",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "question:aux-2-rule-10104",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "source:registerCustomer",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "source:issueAccessToken",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "source:listActiveFoods",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "source:searchActiveFoods",
+        "status": "observed",
+        "outcome": "matched"
+      },
+      {
+        "caseId": "source:getActiveFood",
+        "status": "observed",
+        "outcome": "matched"
+      }
+    ],
+    "nextEligibleCaseIds": [],
+    "nextAllocations": [],
+    "handoffClosesTask": true,
+    "inventoryGaps": [],
+    "openResponsibilities": [],
+    "scope": {
+      "productLocation": "/Users/hahoangloc/Working/UET/SA/ByteMe",
+      "track": "be-anonymous",
+      "environment": "byteme Docker compose",
+      "origin": "http://172.20.0.3:8080"
+    },
+    "inventory": {
+      "productLocation": "/Users/hahoangloc/Working/UET/SA/ByteMe",
+      "track": "be-anonymous",
+      "environment": "byteme Docker compose",
+      "origin": "http://172.20.0.3:8080",
+      "complete": true,
+      "cases": [
+        {
+          "caseId": "register-fullName",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Exercise fullName validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+          "requiredEvidence": [
+            "native-active:fullName",
+            "create-or-boundary-read",
+            "stored-account-readback"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "register-email",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Exercise email validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+          "requiredEvidence": [
+            "native-active:email",
+            "create-or-boundary-read",
+            "stored-account-readback"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "register-phone",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Exercise phone validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+          "requiredEvidence": [
+            "native-active:phone",
+            "create-or-boundary-read",
+            "stored-account-readback"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "register-password",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Exercise password validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+          "requiredEvidence": [
+            "native-active:password",
+            "create-or-boundary-read",
+            "stored-account-readback"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "register-confirmPassword",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Exercise confirmPassword validation and valid account creation/storage while sibling fields remain valid and credentials unique.",
+          "requiredEvidence": [
+            "native-active:confirmPassword",
+            "create-or-boundary-read",
+            "stored-account-readback"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "token-email",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "role": "anonymous",
+          "question": "Exercise credential input validation and credential lookup/comparison without propagating the issued identity.",
+          "requiredEvidence": [
+            "native-active:email",
+            "credential-handler-outcome-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "token-password",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "role": "anonymous",
+          "question": "Exercise credential input validation and credential lookup/comparison without propagating the issued identity.",
+          "requiredEvidence": [
+            "native-active:password",
+            "credential-handler-outcome-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "foods-category-categoryId",
+          "method": "GET",
+          "path": "/api/foods",
+          "role": "anonymous",
+          "question": "Exercise categoryId filter/search handling, numeric validation where applicable, and error/JSON responses against populated catalog data.",
+          "requiredEvidence": [
+            "native-active:query:categoryId",
+            "response-read",
+            "populated-positive-baseline"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "foods-search-q",
+          "method": "GET",
+          "path": "/api/foods/search",
+          "role": "anonymous",
+          "question": "Exercise q filter/search handling, numeric validation where applicable, and error/JSON responses against populated catalog data.",
+          "requiredEvidence": [
+            "native-active:query:q",
+            "response-read",
+            "populated-positive-baseline"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "foods-search-categoryId",
+          "method": "GET",
+          "path": "/api/foods/search",
+          "role": "anonymous",
+          "question": "Exercise categoryId filter/search handling, numeric validation where applicable, and error/JSON responses against populated catalog data.",
+          "requiredEvidence": [
+            "native-active:query:categoryId",
+            "response-read",
+            "populated-positive-baseline"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "foods-id",
+          "method": "GET",
+          "path": "/api/foods/{id}",
+          "role": "anonymous",
+          "question": "Exercise the public numeric selector parser and food lookup/error response on an existing catalog item.",
+          "requiredEvidence": [
+            "native-active:path:id",
+            "response-read",
+            "existing-object-baseline"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "public-auth-contract-controls",
+          "method": "POST",
+          "path": "/api/auth/register; /api/auth/token",
+          "role": "anonymous",
+          "question": "Check malformed JSON, rejected XML, password dependency, duplicate identity and unsupported HTTP method behavior.",
+          "requiredEvidence": [
+            "contract-controls-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-0",
+          "method": "GET",
+          "path": "/openapi.yaml",
+          "role": "anonymous",
+          "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+          "requiredEvidence": [
+            "native-active:header:User-Agent",
+            "response-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-1",
+          "method": "GET",
+          "path": "/actuator/health",
+          "role": "anonymous",
+          "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+          "requiredEvidence": [
+            "native-active:header:User-Agent",
+            "response-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-2",
+          "method": "GET",
+          "path": "/swagger-ui/index.html",
+          "role": "anonymous",
+          "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+          "requiredEvidence": [
+            "native-active:header:User-Agent",
+            "response-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-3",
+          "method": "GET",
+          "path": "/v3/api-docs/swagger-config",
+          "role": "anonymous",
+          "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+          "requiredEvidence": [
+            "native-active:header:User-Agent",
+            "response-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-4",
+          "method": "GET",
+          "path": "/error",
+          "role": "anonymous",
+          "question": "Exercise server header handling and public auxiliary response disclosure with the native User Agent Fuzzer.",
+          "requiredEvidence": [
+            "native-active:header:User-Agent",
+            "response-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-0",
+          "method": "GET",
+          "path": "/swagger-ui.html",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-1",
+          "method": "GET",
+          "path": "/swagger-ui/swagger-ui.css",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-2",
+          "method": "GET",
+          "path": "/swagger-ui/index.css",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-3",
+          "method": "GET",
+          "path": "/swagger-ui/swagger-ui-bundle.js",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-4",
+          "method": "GET",
+          "path": "/swagger-ui/swagger-ui-standalone-preset.js",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-5",
+          "method": "GET",
+          "path": "/swagger-ui/swagger-initializer.js",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-6",
+          "method": "GET",
+          "path": "/swagger-ui/favicon-32x32.png",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-7",
+          "method": "GET",
+          "path": "/swagger-ui/favicon-16x16.png",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-8",
+          "method": "GET",
+          "path": "/swagger-ui/oauth2-redirect.html",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-9",
+          "method": "GET",
+          "path": "/actuator/health/liveness",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "aux-control-10",
+          "method": "GET",
+          "path": "/actuator/health/readiness",
+          "role": "anonymous",
+          "question": "Observe public documentation/static/health-subpath behavior within BE discovery and passive response checks.",
+          "requiredEvidence": [
+            "response-and-passive-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-createFood",
+          "method": "POST",
+          "path": "/api/foods",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-updateFood",
+          "method": "PUT",
+          "path": "/api/foods/{id}",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-deactivateFood",
+          "method": "DELETE",
+          "path": "/api/foods/{id}",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-getCurrentCart",
+          "method": "GET",
+          "path": "/api/cart",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-addCartItem",
+          "method": "POST",
+          "path": "/api/cart/items",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-updateCartItem",
+          "method": "PUT",
+          "path": "/api/cart/items/{cartItemId}",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-removeCartItem",
+          "method": "DELETE",
+          "path": "/api/cart/items/{cartItemId}",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-createOrder",
+          "method": "POST",
+          "path": "/api/orders",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-listOrders",
+          "method": "GET",
+          "path": "/api/orders",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-getOrder",
+          "method": "GET",
+          "path": "/api/orders/{orderId}",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-cancelOrder",
+          "method": "DELETE",
+          "path": "/api/orders/{orderId}",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-confirmOrder",
+          "method": "POST",
+          "path": "/api/orders/{orderId}/confirm",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "denial-updateOrderStatus",
+          "method": "PUT",
+          "path": "/api/orders/{orderId}/status",
+          "role": "anonymous",
+          "question": "Supplementary anonymous denial at the authentication boundary; protected business handlers are outside the requested track.",
+          "requiredEvidence": [
+            "anonymous-denial-read"
+          ],
+          "provenance": "controllers, SecurityConfiguration.java and current runtime OpenAPI",
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:aux-1-rule-10104",
+          "method": "GET",
+          "path": "/actuator/health",
+          "role": "anonymous",
+          "question": "Native input validation and response handling for discovered ByteMe surface",
+          "requiredEvidence": [
+            "question:aux-1-rule-10104"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:token-email-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "role": "anonymous",
+          "question": "Credential lookup/comparison and SQL injection with real positive and negative login outcomes; no password reflection or response-header sink in source.",
+          "requiredEvidence": [
+            "question:token-email-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-phone-valid-rule-909901",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Native input validation and response handling for discovered ByteMe surface",
+          "requiredEvidence": [
+            "question:register-phone-valid-rule-909901"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-phone-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-phone-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:aux-0-rule-10104",
+          "method": "GET",
+          "path": "/openapi.yaml",
+          "role": "anonymous",
+          "question": "Native input validation and response handling for discovered ByteMe surface",
+          "requiredEvidence": [
+            "question:aux-0-rule-10104"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-email-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-email-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-email-rule-40012",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-email-rule-40012"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:foods-search-rule-40018",
+          "method": "GET",
+          "path": "/api/foods/search",
+          "role": "anonymous",
+          "question": "Populated textual search reaches SQL LIKE handling; separately inspect reflection in JSON, without claiming browser execution.",
+          "requiredEvidence": [
+            "question:foods-search-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:foods-search-rule-40012",
+          "method": "GET",
+          "path": "/api/foods/search",
+          "role": "anonymous",
+          "question": "Populated textual search reaches SQL LIKE handling; separately inspect reflection in JSON, without claiming browser execution.",
+          "requiredEvidence": [
+            "question:foods-search-rule-40012"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-fullName-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-fullName-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-fullName-rule-40012",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-fullName-rule-40012"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:foods-id-rule-40018",
+          "method": "GET",
+          "path": "/api/foods/1",
+          "role": "anonymous",
+          "question": "Existing numeric selector; SQL/parser and header/error handling boundaries.",
+          "requiredEvidence": [
+            "question:foods-id-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:foods-id-rule-40003",
+          "method": "GET",
+          "path": "/api/foods/1",
+          "role": "anonymous",
+          "question": "Existing numeric selector; SQL/parser and header/error handling boundaries.",
+          "requiredEvidence": [
+            "question:foods-id-rule-40003"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-password-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-password-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:aux-4-rule-10104",
+          "method": "GET",
+          "path": "/error",
+          "role": "anonymous",
+          "question": "Native input validation and response handling for discovered ByteMe surface",
+          "requiredEvidence": [
+            "question:aux-4-rule-10104"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:register-confirmPassword-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Fresh account create and storage with valid siblings; SQL boundary for all fields, JSON reflection only for returned name/email. Phone valid-format and password dependency receive separate controls.",
+          "requiredEvidence": [
+            "question:register-confirmPassword-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:foods-category-rule-40018",
+          "method": "GET",
+          "path": "/api/foods",
+          "role": "anonymous",
+          "question": "Numeric filter conversion/SQL boundary and CRLF handling; no textual rendering sink.",
+          "requiredEvidence": [
+            "question:foods-category-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:foods-category-rule-40003",
+          "method": "GET",
+          "path": "/api/foods",
+          "role": "anonymous",
+          "question": "Numeric filter conversion/SQL boundary and CRLF handling; no textual rendering sink.",
+          "requiredEvidence": [
+            "question:foods-category-rule-40003"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:aux-3-rule-10104",
+          "method": "GET",
+          "path": "/v3/api-docs/swagger-config",
+          "role": "anonymous",
+          "question": "Native input validation and response handling for discovered ByteMe surface",
+          "requiredEvidence": [
+            "question:aux-3-rule-10104"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:token-password-rule-40018",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "role": "anonymous",
+          "question": "Credential lookup/comparison and SQL injection with real positive and negative login outcomes; no password reflection or response-header sink in source.",
+          "requiredEvidence": [
+            "question:token-password-rule-40018"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "question:aux-2-rule-10104",
+          "method": "GET",
+          "path": "/swagger-ui/index.html",
+          "role": "anonymous",
+          "question": "Native input validation and response handling for discovered ByteMe surface",
+          "requiredEvidence": [
+            "question:aux-2-rule-10104"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "source:registerCustomer",
+          "operationId": "registerCustomer",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "role": "anonymous",
+          "question": "Assess every discovered public operation and source input, independently of allocated campaigns.",
+          "inputs": [
+            {
+              "vector": "JSON-body",
+              "field": "fullName"
+            },
+            {
+              "vector": "JSON-body",
+              "field": "email"
+            },
+            {
+              "vector": "JSON-body",
+              "field": "phone"
+            },
+            {
+              "vector": "JSON-body",
+              "field": "password"
+            },
+            {
+              "vector": "JSON-body",
+              "field": "confirmPassword"
+            }
+          ],
+          "requiredEvidence": [
+            "source-active-result-read",
+            "source-input:JSON-body:fullName",
+            "source-input:JSON-body:email",
+            "source-input:JSON-body:phone",
+            "source-input:JSON-body:password",
+            "source-input:JSON-body:confirmPassword"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "source:issueAccessToken",
+          "operationId": "issueAccessToken",
+          "method": "POST",
+          "path": "/api/auth/token",
+          "role": "anonymous",
+          "question": "Assess every discovered public operation and source input, independently of allocated campaigns.",
+          "inputs": [
+            {
+              "vector": "JSON-body",
+              "field": "email"
+            },
+            {
+              "vector": "JSON-body",
+              "field": "password"
+            }
+          ],
+          "requiredEvidence": [
+            "source-active-result-read",
+            "source-input:JSON-body:email",
+            "source-input:JSON-body:password"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "source:listActiveFoods",
+          "operationId": "listActiveFoods",
+          "method": "GET",
+          "path": "/api/foods",
+          "role": "anonymous",
+          "question": "Assess every discovered public operation and source input, independently of allocated campaigns.",
+          "inputs": [
+            {
+              "vector": "query",
+              "field": "categoryId"
+            }
+          ],
+          "requiredEvidence": [
+            "source-active-result-read",
+            "source-input:query:categoryId"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "source:searchActiveFoods",
+          "operationId": "searchActiveFoods",
+          "method": "GET",
+          "path": "/api/foods/search",
+          "role": "anonymous",
+          "question": "Assess every discovered public operation and source input, independently of allocated campaigns.",
+          "inputs": [
+            {
+              "vector": "query",
+              "field": "q"
+            },
+            {
+              "vector": "query",
+              "field": "categoryId"
+            }
+          ],
+          "requiredEvidence": [
+            "source-active-result-read",
+            "source-input:query:q",
+            "source-input:query:categoryId"
+          ],
+          "prerequisites": []
+        },
+        {
+          "caseId": "source:getActiveFood",
+          "operationId": "getActiveFood",
+          "method": "GET",
+          "path": "/api/foods/{id}",
+          "role": "anonymous",
+          "question": "Assess every discovered public operation and source input, independently of allocated campaigns.",
+          "inputs": [
+            {
+              "vector": "path",
+              "field": "id"
+            }
+          ],
+          "requiredEvidence": [
+            "source-active-result-read",
+            "source-input:path:id"
+          ],
+          "prerequisites": []
+        }
+      ]
+    },
+    "nextActions": []
+  },
+  "notPerformed": [],
+  "nextSteps": []
+}

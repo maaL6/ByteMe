@@ -1,0 +1,1019 @@
+{
+  "product": "ByteMe",
+  "track": "be-anonymous",
+  "origin": "http://172.20.0.3:8080",
+  "generatedAt": "2026-10-25T18:22:13.455926+07:00",
+  "summary": {
+    "groupCount": 9,
+    "instanceCount": 105,
+    "groupsBySeverity": {
+      "Medium": 2,
+      "Low": 3,
+      "Informational": 4
+    },
+    "instancesBySeverity": {
+      "Low": 68,
+      "Informational": 34,
+      "Medium": 3
+    },
+    "groupsBySource": {
+      "ZAP": 9,
+      "direct": 0
+    },
+    "instancesBySource": {
+      "ZAP": 105,
+      "direct": 0
+    },
+    "groupsByTechnique": {
+      "passive": 7,
+      "active": 2
+    },
+    "instancesByTechnique": {
+      "active": 25,
+      "passive": 80
+    },
+    "counting": "A group is native pluginId + severity + confidence. Instances are all distinct current native alert IDs; the standard report includes bounded samples and its smaller instance count is not the denominator."
+  },
+  "alerts": [
+    {
+      "pluginId": "10003",
+      "name": "Vulnerable JS Library",
+      "severity": "Medium",
+      "confidence": "Medium",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 1,
+      "description": "The identified library appears to be vulnerable.",
+      "nativeRecommendation": "Upgrade to the latest version of the affected library.",
+      "testerAssessment": "Native library fingerprint matched DOMPurify.version=\"3.3.2\" in the shipped Swagger bundle. Keep the native Medium/Medium alert. Advisory mappings come from scanner intelligence and were not independently verified; exploit reachability was not tested.",
+      "instances": [
+        {
+          "nativeAlertId": "30",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "DOMPurify.version=\"3.3.2\""
+        }
+      ]
+    },
+    {
+      "pluginId": "10038",
+      "name": "Content Security Policy (CSP) Header Not Set",
+      "severity": "Medium",
+      "confidence": "High",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 2,
+      "description": "Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross Site Scripting (XSS) and data injection attacks. These attacks are used for everything from data theft to site defacement or distribution of malware. CSP provides a set of standard HTTP headers that allow website owners to declare approved sources of content that browsers should be allowed to load on that page — covered types are JavaScript, CSS, HTML frames, fonts, images and embeddable objects such as Java applets, ActiveX, audio and video files.",
+      "nativeRecommendation": "Ensure that your web server, application server, load balancer, etc. is configured to set the Content-Security-Policy header.",
+      "testerAssessment": "CSP is absent on the public Swagger HTML responses. This is a documentation UI hardening finding; exploitation was not demonstrated.",
+      "instances": [
+        {
+          "nativeAlertId": "15",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/index.html",
+          "parameter": "",
+          "attack": "",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "83",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/oauth2-redirect.html",
+          "parameter": "",
+          "attack": "",
+          "observation": ""
+        }
+      ]
+    },
+    {
+      "pluginId": "10096",
+      "name": "Timestamp Disclosure - Unix",
+      "severity": "Low",
+      "confidence": "Low",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 66,
+      "description": "A timestamp was disclosed by the application/web server. - Unix",
+      "nativeRecommendation": "Manually confirm that the timestamp data is not sensitive, and that the data cannot be aggregated to disclose exploitable patterns.",
+      "testerAssessment": "The matches are number sequences in Swagger JavaScript. No runtime account/session timestamp disclosure was established; retain native Low/Low observations without treating constant values as sensitive data.",
+      "instances": [
+        {
+          "nativeAlertId": "31",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1518500249"
+        },
+        {
+          "nativeAlertId": "32",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1859775393"
+        },
+        {
+          "nativeAlertId": "33",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1894007588"
+        },
+        {
+          "nativeAlertId": "34",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1732584193"
+        },
+        {
+          "nativeAlertId": "39",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1750603025"
+        },
+        {
+          "nativeAlertId": "40",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1694076839"
+        },
+        {
+          "nativeAlertId": "41",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1899447441"
+        },
+        {
+          "nativeAlertId": "42",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1508970993"
+        },
+        {
+          "nativeAlertId": "43",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1925078388"
+        },
+        {
+          "nativeAlertId": "44",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1555081692"
+        },
+        {
+          "nativeAlertId": "45",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1996064986"
+        },
+        {
+          "nativeAlertId": "46",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1695183700"
+        },
+        {
+          "nativeAlertId": "47",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1986661051"
+        },
+        {
+          "nativeAlertId": "48",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1537002063"
+        },
+        {
+          "nativeAlertId": "49",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1747873779"
+        },
+        {
+          "nativeAlertId": "50",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1955562222"
+        },
+        {
+          "nativeAlertId": "51",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "2024104815"
+        },
+        {
+          "nativeAlertId": "52",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1779033703"
+        },
+        {
+          "nativeAlertId": "53",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1541459225"
+        },
+        {
+          "nativeAlertId": "54",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1654270250"
+        },
+        {
+          "nativeAlertId": "55",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1731405415"
+        },
+        {
+          "nativeAlertId": "61",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "2007800933"
+        },
+        {
+          "nativeAlertId": "62",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1495990901"
+        },
+        {
+          "nativeAlertId": "63",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1856431235"
+        },
+        {
+          "nativeAlertId": "66",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1546045734"
+        },
+        {
+          "nativeAlertId": "67",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1522805485"
+        },
+        {
+          "nativeAlertId": "71",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "2003034995"
+        },
+        {
+          "nativeAlertId": "74",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1575990012"
+        },
+        {
+          "nativeAlertId": "76",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1914138554"
+        },
+        {
+          "nativeAlertId": "77",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1501505948"
+        },
+        {
+          "nativeAlertId": "78",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1607167915"
+        },
+        {
+          "nativeAlertId": "79",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1816402316"
+        },
+        {
+          "nativeAlertId": "82",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-standalone-preset.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1595750129"
+        },
+        {
+          "nativeAlertId": "85",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1518500249"
+        },
+        {
+          "nativeAlertId": "86",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1859775393"
+        },
+        {
+          "nativeAlertId": "87",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1894007588"
+        },
+        {
+          "nativeAlertId": "88",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1732584193"
+        },
+        {
+          "nativeAlertId": "93",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1750603025"
+        },
+        {
+          "nativeAlertId": "94",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1694076839"
+        },
+        {
+          "nativeAlertId": "95",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1899447441"
+        },
+        {
+          "nativeAlertId": "96",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1508970993"
+        },
+        {
+          "nativeAlertId": "97",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1925078388"
+        },
+        {
+          "nativeAlertId": "98",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1555081692"
+        },
+        {
+          "nativeAlertId": "99",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1996064986"
+        },
+        {
+          "nativeAlertId": "100",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1695183700"
+        },
+        {
+          "nativeAlertId": "101",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1986661051"
+        },
+        {
+          "nativeAlertId": "102",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1537002063"
+        },
+        {
+          "nativeAlertId": "103",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1747873779"
+        },
+        {
+          "nativeAlertId": "104",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1955562222"
+        },
+        {
+          "nativeAlertId": "105",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "2024104815"
+        },
+        {
+          "nativeAlertId": "106",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1779033703"
+        },
+        {
+          "nativeAlertId": "107",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1541459225"
+        },
+        {
+          "nativeAlertId": "108",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1654270250"
+        },
+        {
+          "nativeAlertId": "109",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1731405415"
+        },
+        {
+          "nativeAlertId": "115",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "2007800933"
+        },
+        {
+          "nativeAlertId": "116",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1495990901"
+        },
+        {
+          "nativeAlertId": "117",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1856431235"
+        },
+        {
+          "nativeAlertId": "120",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1546045734"
+        },
+        {
+          "nativeAlertId": "121",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1522805485"
+        },
+        {
+          "nativeAlertId": "125",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "2003034995"
+        },
+        {
+          "nativeAlertId": "128",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1575990012"
+        },
+        {
+          "nativeAlertId": "130",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1914138554"
+        },
+        {
+          "nativeAlertId": "131",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1501505948"
+        },
+        {
+          "nativeAlertId": "132",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1607167915"
+        },
+        {
+          "nativeAlertId": "133",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1816402316"
+        },
+        {
+          "nativeAlertId": "136",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/swagger-ui-bundle.js",
+          "parameter": "",
+          "attack": "",
+          "observation": "1595750129"
+        }
+      ]
+    },
+    {
+      "pluginId": "10104",
+      "name": "User Agent Fuzzer",
+      "severity": "Informational",
+      "confidence": "Medium",
+      "source": "ZAP",
+      "technique": "active",
+      "nativeSourceId": "1",
+      "instanceCount": 24,
+      "description": "Check for differences in response based on fuzzed User Agent (eg. mobile sites, access as a Search Engine Crawler). Compares the response statuscode and the hashcode of the response body with the original response.",
+      "nativeRecommendation": "",
+      "testerAssessment": "Informational User Agent Fuzzer observations on public documentation/error routes. These do not establish a security impact; keep native confidence and severity.",
+      "instances": [
+        {
+          "nativeAlertId": "3",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "4",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "5",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "6",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "7",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3739.0 Safari/537.36 Edg/75.0.109.0",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "8",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "9",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "msnbot/1.1 (+http://search.msn.com/msnbot.htm)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "10",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "11",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (iPhone; U; CPU iPhone OS 3_0 like Mac OS X; en-us) AppleWebKit/528.18 (KHTML, like Gecko) Version/4.0 Mobile/7A341 Safari/528.16",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "12",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (iPhone; CPU iPhone OS 8_0_2 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Version/8.0 Mobile/12A366 Safari/600.1.4",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "13",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/91.0",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "14",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/openapi.yaml",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "18",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "19",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "20",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "21",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "22",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3739.0 Safari/537.36 Edg/75.0.109.0",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "23",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "24",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "msnbot/1.1 (+http://search.msn.com/msnbot.htm)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "25",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "26",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (iPhone; U; CPU iPhone OS 3_0 like Mac OS X; en-us) AppleWebKit/528.18 (KHTML, like Gecko) Version/4.0 Mobile/7A341 Safari/528.16",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "27",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (iPhone; CPU iPhone OS 8_0_2 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Version/8.0 Mobile/12A366 Safari/600.1.4",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "28",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/91.0",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "29",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "Header User-Agent",
+          "attack": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+          "observation": ""
+        }
+      ]
+    },
+    {
+      "pluginId": "10109",
+      "name": "Modern Web Application",
+      "severity": "Informational",
+      "confidence": "Medium",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 2,
+      "description": "The application appears to be a modern web application. If you need to explore it automatically then the Client Spider may well be more effective than the standard one.",
+      "nativeRecommendation": "This is an informational alert and so no changes are required.",
+      "testerAssessment": "Informational recognition of the public Swagger web UI; not a demonstrated vulnerability.",
+      "instances": [
+        {
+          "nativeAlertId": "16",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/index.html",
+          "parameter": "",
+          "attack": "",
+          "observation": ""
+        },
+        {
+          "nativeAlertId": "84",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/swagger-ui/oauth2-redirect.html",
+          "parameter": "",
+          "attack": "",
+          "observation": ""
+        }
+      ]
+    },
+    {
+      "pluginId": "10111",
+      "name": "Authentication Request Identified",
+      "severity": "Informational",
+      "confidence": "Low",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 5,
+      "description": "The given request has been identified as an authentication request. The 'Other Info' field contains a set of key=value lines which identify any relevant fields. If the request is in a context which has an Authentication Method set to \"Auto-Detect\" then this rule will change the authentication to match the request identified.",
+      "nativeRecommendation": "This is an informational alert rather than a vulnerability and so there is nothing to fix.",
+      "testerAssessment": "Expected recognition of a public login request, not evidence of credential disclosure.",
+      "instances": [
+        {
+          "nativeAlertId": "137",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "attack": "",
+          "observation": "password"
+        },
+        {
+          "nativeAlertId": "139",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "attack": "",
+          "observation": "password"
+        },
+        {
+          "nativeAlertId": "141",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "attack": "",
+          "observation": "password"
+        },
+        {
+          "nativeAlertId": "143",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "attack": "",
+          "observation": "password"
+        },
+        {
+          "nativeAlertId": "145",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "email",
+          "attack": "",
+          "observation": "password"
+        }
+      ]
+    },
+    {
+      "pluginId": "10112",
+      "name": "Session Management Response Identified",
+      "severity": "Informational",
+      "confidence": "Medium",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 3,
+      "description": "The given response has been identified as containing a session management token. The 'Other Info' field contains a set of header tokens that can be used in the Header Based Session Management Method. If the request is in a context which has a Session Management Method set to \"Auto-Detect\" then this rule will change the session management to use the tokens identified.",
+      "nativeRecommendation": "This is an informational alert rather than a vulnerability and so there is nothing to fix.",
+      "testerAssessment": "Expected recognition of issued accessToken fields. Tokens were returned only by public login with valid test credentials and were not propagated or included in the handoff.",
+      "instances": [
+        {
+          "nativeAlertId": "1",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "accessToken",
+          "attack": "",
+          "observation": "accessToken"
+        },
+        {
+          "nativeAlertId": "2",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "accessToken",
+          "attack": "",
+          "observation": "accessToken"
+        },
+        {
+          "nativeAlertId": "138",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/token",
+          "parameter": "accessToken",
+          "attack": "",
+          "observation": "accessToken"
+        }
+      ]
+    },
+    {
+      "pluginId": "40012",
+      "name": "Cross Site Scripting Weakness (Reflected in JSON Response)",
+      "severity": "Low",
+      "confidence": "Low",
+      "source": "ZAP",
+      "technique": "active",
+      "nativeSourceId": "1",
+      "instanceCount": 1,
+      "description": "A XSS attack was reflected in a JSON response, this might leave content consumers vulnerable to attack if they don't appropriately handle the data (response).",
+      "nativeRecommendation": "Phase: Architecture and Design\nUse a vetted library or framework that does not allow this weakness to occur or provides constructs that make this weakness easier to avoid.\nExamples of libraries and frameworks that make it easier to generate properly encoded output include Microsoft's Anti-XSS library, the OWASP ESAPI Encoding module, and Apache Wicket.\n\nPhases: Implementation; Architecture and Design\nUnderstand the context in which your data will be used and the encoding that will be expected. This is especially important when transmitting data between different components, or when generating outputs that can contain multiple encodings at the same time, such as web pages or multi-part mail messages. Study all expected communication protocols and data representations to determine the required encoding strategies.\nFor any data that will be output to another web page, especially any data that was received from external inputs, use the appropriate encoding on all non-alphanumeric characters.\nConsult the XSS Prevention Cheat Sheet for more details on the types of encoding and escaping that are needed.\n\nPhase: Architecture and Design\nFor any security checks that are performed on the client side, ensure that these checks are duplicated on the server side, in order to avoid CWE-602. Attackers can bypass the client-side checks by modifying values after the checks have been performed, or by changing the client to remove the client-side checks entirely. Then, these modified values would be submitted to the server.\n\nIf available, use structured mechanisms that automatically enforce the separation between data and code. These mechanisms may be able to provide the relevant quoting, encoding, and validation automatically, instead of relying on the developer to provide this capability at every point where output is generated.\n\nPhase: Implementation\nFor every web page that is generated, use and specify a character encoding such as ISO-8859-1 or UTF-8. When an encoding is not specified, the web browser may choose a different encoding by guessing which encoding is actually being used by the web page. This can cause the web browser to treat certain sequences as special, opening up the client to subtle XSS attacks. See CWE-116 for more mitigations related to encoding/escaping.\n\nTo help mitigate XSS attacks against the user's session cookie, set the session cookie to be HttpOnly. In browsers that support the HttpOnly feature (such as more recent versions of Internet Explorer and Firefox), this attribute can prevent the user's session cookie from being accessible to malicious client-side scripts that use document.cookie. This is not a complete solution, since HttpOnly is not supported by all browsers. More importantly, XMLHTTPRequest and other powerful browser technologies provide read access to HTTP headers, including the Set-Cookie header in which the HttpOnly flag is set.\n\nAssume all input is malicious. Use an \"accept known good\" input validation strategy, i.e., use an allow list of acceptable inputs that strictly conform to specifications. Reject any input that does not strictly conform to specifications, or transform it into something that does. Do not rely exclusively on looking for malicious or malformed inputs (i.e., do not rely on a deny list). However, deny lists can be useful for detecting potential attacks or determining which inputs are so malformed that they should be rejected outright.\n\nWhen performing input validation, consider all potentially relevant properties, including length, type of input, the full range of acceptable values, missing or extra inputs, syntax, consistency across related fields, and conformance to business rules. As an example of business rule logic, \"boat\" may be syntactically valid because it only contains alphanumeric characters, but it is not valid if you are expecting colors such as \"red\" or \"blue.\"\n\nEnsure that you perform input validation at well-defined interfaces within the application. This will help protect the application even if a component is reused or moved elsewhere.",
+      "testerAssessment": "Native severity/confidence retained; inspect impact in the actual response context. A JSON reflection is not proof of browser execution.",
+      "instances": [
+        {
+          "nativeAlertId": "0",
+          "method": "POST",
+          "url": "http://172.20.0.3:8080/api/auth/register",
+          "parameter": "fullName",
+          "attack": "alert(1);",
+          "observation": ""
+        }
+      ]
+    },
+    {
+      "pluginId": "90022",
+      "name": "Application Error Disclosure",
+      "severity": "Low",
+      "confidence": "Medium",
+      "source": "ZAP",
+      "technique": "passive",
+      "nativeSourceId": "3",
+      "instanceCount": 1,
+      "description": "This page contains an error/warning message that may disclose sensitive information like the location of the file that produced the unhandled exception. This information can be used to launch further attacks against the web application. The alert could be a false positive if the error message is found inside a documentation page.",
+      "nativeRecommendation": "Review the source code of this page. Implement custom error pages. Consider implementing a mechanism to provide a unique error reference/identifier to the client (browser) while logging the details on the server side and not exposing them to the user.",
+      "testerAssessment": "The public /error route returns HTTP 500 and generic JSON with status 999 and error None. The match is the HTTP status line; inspected response contains no stack trace, file path or secret. Sensitive disclosure impact is unconfirmed.",
+      "instances": [
+        {
+          "nativeAlertId": "17",
+          "method": "GET",
+          "url": "http://172.20.0.3:8080/error",
+          "parameter": "",
+          "attack": "",
+          "observation": "HTTP/1.0 500 Internal Server Error"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Native severity/confidence preserved. Informational detections are not automatically vulnerabilities.",
+    "Advisory mappings and exploit impact were not independently confirmed; see per-group testerAssessment."
+  ],
+  "taskCompletion": "complete"
+}

@@ -1,70 +1,20 @@
 # ByteMe
 
-Backend REST/JSON đặt món cho một nhà hàng: khách đăng ký, xem thực đơn, quản lý giỏ và đặt món ăn tại chỗ (`DINE_IN`) hoặc giao hàng (`DELIVERY`); nhân viên xử lý đơn; admin quản lý món ăn.
+Backend REST/JSON đặt món cho một nhà hàng: khách đăng ký, xem thực đơn, quản lý giỏ
+và đặt món ăn tại chỗ (`DINE_IN`) hoặc giao hàng (`DELIVERY`); nhân viên xử lý đơn;
+admin quản lý món ăn.
 
-Java 21, Spring Boot 3.5.16, MySQL 8.4, Spring Data JPA, Spring Security, Springdoc OpenAPI, JUnit 5 và Testcontainers. Maven 3.9.11 qua Maven Wrapper.
-
-- **Swagger UI**: http://localhost:8080/swagger-ui/index.html
-- **OpenAPI spec**: http://localhost:8080/openapi.yaml
-- **Tài liệu chi tiết**: [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md), [docs/database-design.md](docs/database-design.md), đặc tả use case [docs/Project KTPM.md](<docs/Project KTPM.md>).
-
----
-
-## Cài đặt và khởi chạy
-
-### Yêu cầu môi trường
-- Java 21 trở lên
-- Docker và Docker Compose
-- Python 3 (thư viện `cryptography==50.0.2` để sinh cặp khóa RSA cho JWT)
-
-### 1. Chuẩn bị cặp khóa RSA
-Ứng dụng sử dụng cặp khóa RSA đặt trong `.local` (đã gitignore) để phát và kiểm tra JWT:
-```sh
-python3 -m venv .venv
-.venv/bin/pip install cryptography==50.0.2
-.venv/bin/python scripts/generate-keys.py
-```
-
-### 2. Khởi chạy ứng dụng
-
-#### Cách 1: Chạy bằng Docker Compose (Khuyên dùng)
-Chuẩn bị bản sao khóa cho Docker và build/khởi chạy toàn bộ hệ thống (MySQL + Backend):
-```sh
-.venv/bin/python scripts/prepare-docker-keys.py
-docker compose up --build -d
-```
-
-Nạp dữ liệu mẫu vào MySQL của Docker Compose (chạy một lần):
-```sh
-docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /opt/byteme/seed.sql'
-```
-
-#### Cách 2: Chạy trực tiếp trên máy host (Local JVM)
-Chạy riêng container MySQL:
-```sh
-docker compose up mysql -d
-```
-Sau đó khởi chạy backend qua Maven Wrapper:
-- **Linux / macOS**:
-  ```sh
-  DB_URL=jdbc:mysql://localhost:3306/starter DB_USERNAME=starter DB_PASSWORD=local-development-only ./mvnw spring-boot:run
-  ```
-- **Windows (PowerShell)**:
-  ```powershell
-  $env:DB_URL="jdbc:mysql://localhost:3306/starter"; $env:DB_USERNAME="starter"; $env:DB_PASSWORD="local-development-only"; .\mvnw.cmd spring-boot:run
-  ```
-
-### Tài khoản mẫu (Seed Accounts)
-Sau khi nạp `seed.sql`, hệ thống có sẵn các tài khoản thử nghiệm với mật khẩu chung là **`ByteMeDemo!2026`**:
-- **ADMIN**: `admin@byteme.example` (thêm, sửa, ngừng bán món ăn)
-- **EMPLOYEE**: `huong.employee@byteme.example` hoặc `nam.employee@byteme.example` (tiếp nhận đơn, cập nhật trạng thái đơn)
-- **CUSTOMER**: `an.customer@byteme.example`, `binh.customer@byteme.example` (xem giỏ, đặt hàng, hủy đơn của mình)
-
----
+Java 21, Spring Boot 3.5.16, MySQL 8.4, Spring Data JPA, Spring Security,
+Springdoc OpenAPI, JUnit 5 và Testcontainers. Maven 3.9.11 qua Maven Wrapper.
 
 ## Kiến trúc
 
-Modular monolith gồm 4 module: `auth`, `food`, `cart`, `order`. Mọi module dùng cùng một kiểu phân tầng:
+Chi tiết: [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md),
+[docs/database-design.md](docs/database-design.md), đặc tả use case
+[docs/Project KTPM.md](<docs/Project KTPM.md>).
+
+Modular monolith gồm 4 module: `auth`, `food`, `cart`, `order`. Mọi module dùng cùng
+một kiểu phân tầng:
 
 ```
 HTTP/JSON
@@ -92,62 +42,51 @@ src/main/java/org/example/
 └── platform/                        BCrypt, phát/kiểm tra JWT, rate limit đăng nhập
 ```
 
-### Quy tắc thiết kế (kiểm tra tự động qua `ArchitectureTest`)
-- **Tầng service**: Không phụ thuộc Spring Web/HTTP, Servlet, Spring Data, JDBC, JPA hay Hibernate.
-  - Service của Food/Cart/Order ném `BusinessException` (`INVALID`/`FORBIDDEN`/`NOT_FOUND`/`CONFLICT` + mã lỗi).
-  - Lớp `GlobalErrors` chuyển đổi tự động thành HTTP 400/403/404/409 với body chuẩn:
-    `{status, code, message, path, fieldErrors}`.
-  - Module Auth dùng cơ chế riêng (`AuthFailure` và `AuthErrors`).
-  - Service sử dụng entity JPA làm mô hình dữ liệu và `@Transactional` (spring-tx) để quản lý ranh giới transaction.
-  - Thao tác riêng của ORM (như `flush`) được đóng gói trong repository (ví dụ `CartRepository.saveChanges`); service chỉ gọi thao tác CRUD và phương thức nghiệp vụ.
-- **Validation**: Bean Validation (`@Valid` trên DTO) kiểm tra trường bắt buộc và định dạng; service chỉ kiểm tra quy tắc nghiệp vụ (ví dụ các trường bắt buộc theo loại đơn `DINE_IN`/`DELIVERY`).
-- **Phân tách trách nhiệm**: Controller không gọi trực tiếp repository.
-- **Giao tiếp liên module**: Chỉ gọi qua **service/dto** của nhau, không truy cập chéo entity/repository:
-  - Cart gọi `FoodService`.
-  - Order gọi `CartService` và `FoodService`.
-- **Bảo mật**: Xác thực và phân quyền tập trung tại `SecurityConfiguration`; service chỉ kiểm tra quyền sở hữu tài nguyên (khách chỉ xem/hủy đơn của mình).
+Quy tắc chung (các quy tắc về phụ thuộc giữa tầng/module được `ArchitectureTest` kiểm tra tự động):
 
-### Quy trình Checkout & Hủy đơn
-Checkout (`POST /api/orders`) chạy đồng bộ trong **một database transaction**:
-1. Đọc giỏ của khách theo thứ tự dòng; chưa có giỏ hoặc giỏ rỗng trả `400 EMPTY_CART`.
-2. Với từng món: đọc món, kiểm tra trạng thái bán và tồn kho, trừ tồn kho (`stock = stock - qty`).
-3. Lưu đơn hàng `PENDING` với snapshot tên và giá món tại thời điểm đặt (giá do server quyết định).
-4. Dọn sạch giỏ hàng. Lỗi ở bất kỳ bước nào sẽ rollback toàn bộ.
+- Tầng `service` không phụ thuộc Spring Web/HTTP, Servlet, Spring Data, JDBC, JPA hay Hibernate.
+  Service của Food/Cart/Order ném `BusinessException` (`INVALID`/`FORBIDDEN`/`NOT_FOUND`/`CONFLICT` + mã lỗi);
+  `GlobalErrors` chuyển thành HTTP 400/403/404/409 với body chung
+  `{status, code, message, path, fieldErrors}`. Auth dùng `AuthFailure` và handler riêng `AuthErrors`.
+  Service vẫn dùng entity JPA làm mô hình dữ liệu và `@Transactional` (spring-tx) để khai báo
+  ranh giới giao dịch; tách thêm lớp domain riêng sẽ gấp đôi số lớp mà không thêm chức năng.
+  Thao tác riêng của ORM (flush) nằm trong repository, ví dụ
+  `CartRepository.saveChanges`; service chỉ gọi thao tác kiểu CRUD và phương thức tự khai báo.
+- Bean Validation (`@Valid` trên DTO) kiểm tra trường bắt buộc và độ dài cho Food/Cart/Order
+  (Auth giữ `AuthValidation` riêng);
+  service chỉ kiểm tra quy tắc nghiệp vụ, như trường bắt buộc theo loại đơn `DINE_IN`/`DELIVERY`.
+- Controller không gọi thẳng repository.
+- Module khác chỉ gọi **service/dto** của Food, Cart, Order, không dùng entity/repository
+  của nhau: Cart gọi `FoodService`; Order gọi `CartService` và `FoodService`.
+- Xác thực và phân quyền chỉ nằm ở `SecurityConfiguration`; service chỉ kiểm tra quyền sở
+  hữu (khách chỉ xem/hủy đơn của mình).
 
-Hủy đơn: kiểm tra trạng thái hợp lệ, sau đó hoàn kho từng dòng sản phẩm trong cùng transaction.
+Checkout (`POST /api/orders`) chạy đồng bộ trong **một transaction**:
 
-`GET /api/cart`: khi khách chưa có giỏ sẽ trả giỏ rỗng (`id: null`, `items: []`) và không tạo bản ghi trong DB; bản ghi giỏ chỉ được tạo ở lần thêm món đầu tiên.
+1. Đọc giỏ của khách theo thứ tự dòng giỏ; chưa có giỏ hoặc giỏ rỗng trả `400 EMPTY_CART`.
+2. Với từng món: đọc món, kiểm tra còn bán và đủ kho, trừ kho.
+3. Lưu đơn `PENDING` với snapshot tên/giá món (giá do server quyết định).
+4. Dọn giỏ. Lỗi ở bất kỳ bước nào sẽ rollback toàn bộ.
 
-### Giới hạn Phase 1
-Theo yêu cầu triển khai cơ bản ban đầu, Phase 1 chưa dùng khóa hàng (`SELECT … FOR UPDATE`) hay khóa lạc quan (`@Version`):
-- Checkout đồng thời có thể gặp lost update tồn kho (tuy nhiên tồn kho không âm do service luôn kiểm tra `stock >= qty` trước khi ghi).
-- Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể hoàn kho 2 lần.
+Hủy đơn đọc đơn, kiểm tra bước chuyển rồi hoàn kho từng dòng trong cùng transaction.
+`GET /api/cart` khi khách chưa có giỏ trả giỏ rỗng (`id: null`, `items: []`) và không tạo
+giỏ; giỏ được tạo ở lần thêm món đầu tiên.
+
+**Giới hạn phase 1.** Theo yêu cầu "chỉ triển khai chức năng cơ bản, không cần tối ưu",
+phase 1 không dùng khóa hàng (`SELECT … FOR UPDATE`) hay khóa lạc quan (`@Version`):
+
+- Checkout đồng thời có thể bán vượt kho do lost update: hai transaction cùng đọc một tồn kho,
+  cùng ghi `stock - qty`. Tồn kho không âm vì service kiểm tra `stock >= qty` trước khi ghi.
+- Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể hoàn kho hai lần.
 - Admin sửa món đồng thời với checkout có thể ghi đè tồn kho.
 
-*Các điểm này sẽ được xử lý tại Phase 2 cùng cơ chế chống tranh chấp đồng thời.*
-
----
-
-## Xác thực & Phân quyền (Auth)
-
-- Auth và xác thực JWT luôn bật mặc định trên toàn hệ thống (không có profile bypass).
-- **Endpoint công khai**: Xem thực đơn, tìm kiếm món, Swagger UI, OpenAPI spec, đăng ký (`POST /api/auth/register`) và đăng nhập (`POST /api/auth/token`).
-- **Thời hạn JWT (TTL)**: 5.400 giây (90 phút).
-- **Chống brute-force (Rate Limit in-memory)**: Tối đa 10 lần/email và 100 lần/IP trong 900 giây (15 phút).
-- **Yêu cầu JWT**: Tầng Cart và Order yêu cầu trường `sub` (subject) trong JWT bắt buộc phải là **ID số nguyên dương** (ID tài khoản trong database). Subject không phải số sẽ bị trả về 403.
-
-Tạo token fixture nhanh để thử nghiệm phân quyền cục bộ:
-```sh
-bash scripts/issue-local-tokens.sh
-```
-
----
+Các điểm này để dành cho phase 2 và là mục tiêu đo trước/sau cải tiến.
 
 ## Đặc tả API
 
-OpenAPI: `/openapi.yaml` | Swagger UI: `/swagger-ui/index.html`
+OpenAPI: `/openapi.yaml`; Swagger UI: `/swagger-ui/index.html`.
 
-| UC | Method | Endpoint | Quyền hạn |
+| UC | Method | Endpoint | Quyền |
 | --- | --- | --- | --- |
 | UC01 Đăng ký | POST | `/api/auth/register` | Công khai |
 | UC02 Đăng nhập | POST | `/api/auth/token` | Công khai |
@@ -168,69 +107,83 @@ OpenAPI: `/openapi.yaml` | Swagger UI: `/swagger-ui/index.html`
 | UC17 Đổi trạng thái | PUT | `/api/orders/{orderId}/status` | EMPLOYEE |
 | UC18 Đơn cần xử lý | GET | `/api/orders?status=&orderType=&page=&size=` | EMPLOYEE |
 
-### Trạng thái đơn hàng
-- Luồng chính: `PENDING → CONFIRMED → PROCESSING`
-  - Đơn ăn tại chỗ (`DINE_IN`): `PROCESSING → COMPLETED`
-  - Đơn giao hàng (`DELIVERY`): `PROCESSING → SHIPPING → COMPLETED`
-- Khách chỉ được hủy khi đơn ở `PENDING`. Nhân viên có thể hủy khi đơn ở `PENDING`, `CONFIRMED` hoặc `PROCESSING`.
+Trạng thái đơn: `PENDING → CONFIRMED → PROCESSING`, rồi `DINE_IN → COMPLETED` hoặc
+`DELIVERY → SHIPPING → COMPLETED`. Nhân viên hủy được ở `PENDING/CONFIRMED/PROCESSING`.
 
-### Mã lỗi nghiệp vụ thường gặp
-- **400**: `VALIDATION_ERROR` (sai tham số DTO), `EMPTY_CART` (giỏ hàng rỗng).
-- **403**: `FORBIDDEN` (không đủ quyền hạn hoặc không phải chủ đơn hàng).
-- **404**: `FOOD_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `CART_ITEM_NOT_FOUND`, `ORDER_NOT_FOUND`.
-- **409**: `FOOD_UNAVAILABLE` (món ngừng bán), `INSUFFICIENT_STOCK` (không đủ tồn kho), `FOOD_NAME_CONFLICT` (trùng tên món), `INVALID_ORDER_TRANSITION` (chuyển sai trạng thái), `CONFLICT` (vi phạm ràng buộc dữ liệu).
-
----
-
-## Luồng Giỏ hàng → Đặt đơn (Cart → Order)
-
-Sau khi đăng nhập tài khoản `CUSTOMER`, thêm món vào giỏ qua `POST /api/cart/items` (`{"foodId": 1, "quantity": 2}`), sau đó tạo đơn qua `POST /api/orders`:
-
-**Đơn ăn tại chỗ (`DINE_IN`)**:
-```json
-{
-  "orderType": "DINE_IN",
-  "tableNumber": "B05",
-  "paymentMethod": "CASH",
-  "note": "Ít cay"
-}
-```
-*Phương thức thanh toán hợp lệ: `CASH` hoặc `BANK_TRANSFER`.*
-
-**Đơn giao hàng (`DELIVERY`)**:
-```json
-{
-  "orderType": "DELIVERY",
-  "recipientName": "An",
-  "shippingPhone": "0900000004",
-  "shippingAddress": "12 Nguyễn Văn Cừ",
-  "paymentMethod": "COD"
-}
-```
-*Phương thức thanh toán hợp lệ: `COD` hoặc `BANK_TRANSFER`.*
-
-### Lưu ý quan trọng
-- Client **không gửi** danh sách món, đơn giá hay `userId`; server tự lấy từ giỏ hàng và JWT.
-- Giá trị enum (`DINE_IN`, `CASH`, `COD`...) bắt buộc gửi dạng tên chuỗi; gửi dạng số hoặc chuỗi số sẽ trả về lỗi 400.
-- `GET /api/orders`: Hỗ trợ phân trang với `page` mặc định là `0`, `size` mặc định là `20` (tối đa 100), sắp xếp đơn mới nhất lên đầu.
-- Chưa hỗ trợ idempotency key: gửi lại request POST tạo đơn khi giỏ đã dọn sẽ trả lỗi `400 EMPTY_CART`.
-
----
+Mã lỗi nghiệp vụ thường gặp: `VALIDATION_ERROR`, `EMPTY_CART` (400); `FORBIDDEN` (403);
+`FOOD_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `CART_ITEM_NOT_FOUND`,
+`ORDER_NOT_FOUND` (404); `FOOD_UNAVAILABLE`, `INSUFFICIENT_STOCK`, `FOOD_NAME_CONFLICT`,
+`INVALID_ORDER_TRANSITION`, `CONFLICT` (409, vi phạm UNIQUE của database).
 
 ## Kiểm thử
 
-### 1. Chạy Unit & Integration Tests (Testcontainers)
-Yêu cầu Docker Daemon đang chạy để Testcontainers khởi tạo MySQL thật:
-- Linux / macOS: `./mvnw test`
-- Windows: `.\mvnw.cmd test`
-
-*Bao gồm test service, test bảo mật MockMvc, test MySQL tích hợp (checkout, rollback, trừ/hoàn kho) và kiểm tra phụ thuộc qua `ArchitectureTest`.*
-
-### 2. Chạy kịch bản kiểm thử API tự động
-Kiểm thử toàn diện các endpoint trên hệ thống đang chạy (localhost:8080):
 ```sh
-python -X utf8 scripts/test-endpoints.py
+./mvnw test          # cần Docker đang chạy cho test Testcontainers (MySQL thật)
 ```
 
-### 3. Kiểm thử tải (Load Testing)
-Kịch bản và báo cáo đo tải trên Kaggle: xem [kaggle/script/README.md](kaggle/script/README.md).
+Nạp dữ liệu mẫu (tài khoản mật khẩu `ByteMeDemo!2026`) vào MySQL của Docker Compose một lần:
+
+```sh
+docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /opt/byteme/seed.sql'
+```
+
+Gồm test service, test HTTP/phân quyền (MockMvc), test MySQL tích hợp (checkout,
+rollback, trừ/hoàn kho, giỏ rỗng) và `ArchitectureTest`. Các test đồng thời (khóa hàng,
+`@Version`, không bán vượt kho khi tranh chấp) đã được bỏ ở phase 1 và sẽ quay lại ở
+phase 2 cùng cơ chế chống tranh chấp. Kiểm thử tải trên
+Kaggle: xem [kaggle/script/README.md](kaggle/script/README.md).
+
+## Auth mặc định — UC-01/02
+
+Auth và xác thực JWT luôn bật; không có profile `dev` hoặc chế độ chạy tắt Auth. Health, Swagger, xem thực đơn, đăng ký và đăng nhập công khai. Các API còn lại cần JWT và được phân quyền theo CUSTOMER/EMPLOYEE/ADMIN. JWT TTL 5400 giây; logout/revocation/rotation chưa triển khai. Quota login in-memory 10/email và 100/IP trong 900 giây.
+
+Cần Java 21 trở lên, Docker và Python 3 với cryptography (baseline 50.0.2) để chạy đầy đủ ứng dụng và test:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install cryptography==50.0.2
+.venv/bin/python scripts/generate-keys.py
+DB_URL=jdbc:mysql://localhost:3306/starter DB_USERNAME=starter DB_PASSWORD=local-development-only ./mvnw spring-boot:run
+```
+
+Lệnh ví dụ dùng database/user `starter` local. Cấu hình kết nối luôn đến từ `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; với môi trường ngoài local, truyền credentials riêng qua biến môi trường. `POST /api/auth/register` nhận fullName/email/phone/password/confirmPassword, trả 201 CUSTOMER/ACTIVE. `POST /api/auth/token` nhận email/password, trả accessToken/tokenType/expiresIn/user. JSON strict và lỗi Auth chỉ áp dụng AuthController. OpenAPI thống nhất tại `/openapi.yaml`; Swagger UI tại `/swagger-ui/index.html` được cấu hình để đọc specification này thay vì tài liệu sinh tự động `/v3/api-docs`.
+
+```sh
+./mvnw test
+bash scripts/issue-local-tokens.sh
+```
+
+Dev CLI tạo 4 JWT fixture local; subject fixture không phải ID users MySQL và không thay đăng nhập thật. Khóa/token nằm trong `.local` bị gitignore; không in token vào log. Script hỗ trợ macOS/Linux (file permissions POSIX), JDK 21+ trên macOS hoặc SA_JAVA_HOME/JAVA_HOME, và Python qua AUTH_DEV_PYTHON hoặc .venv.
+
+Docker dùng bản sao khóa riêng cho runtime UID 10001. Chuẩn bị bản sao cho Docker một lần:
+
+```sh
+.venv/bin/python scripts/prepare-docker-keys.py
+docker compose up --build
+```
+
+Trên Linux, cấp quyền đọc cho UID 10001 qua ownership/ACL của `.local/docker-keys`; không đổi private key sang world-readable. Trên Docker Desktop, mount read-only hoạt động với quyền file hiện tại. Compose giữ volume MySQL. Chưa có signing/rotation production hoặc NFR Kaggle; khóa/issuer/audience hiện dùng baseline local.
+
+CLI thử nghiệm `LocalTokenCli` nằm trong `src/test/java/org/example/dev/`, script dùng test-compile và target/test-classes; CLI không được đóng gói trong application.jar. Application.main là entry point chạy backend, giữ trong src/main/java.
+
+## Cart → Order
+
+Dùng JWT đăng nhập thật cho cả Cart và Order; không dùng `X-User-Id`. Subject của JWT
+phải là ID số dương (ID tài khoản); subject không phải số (ví dụ JWT fixture) bị 403 ở
+Cart/Order. Service không kiểm tra ID đó có tồn tại trong database.
+POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/orders`:
+
+```json
+{ "orderType": "DINE_IN", "tableNumber": "B05", "paymentMethod": "CASH", "note": "Ít cay" }
+{ "orderType": "DELIVERY", "recipientName": "An", "shippingPhone": "0900000004",
+  "shippingAddress": "12 Nguyễn Văn Cừ", "paymentMethod": "COD" }
+```
+
+- DINE_IN dùng CASH/BANK_TRANSFER, DELIVERY dùng COD/BANK_TRANSFER; client không gửi món, giá hay userId.
+- Enum phải gửi bằng tên (`DINE_IN`, `CASH`...); số hoặc chuỗi số trả 400.
+- `GET /api/orders`: `page` mặc định 0, `size` mặc định 20 (1–100), sắp xếp mới nhất trước.
+  Khách thấy mọi đơn của mình; nhân viên mặc định thấy PENDING/CONFIRMED/PROCESSING/SHIPPING.
+- Sau checkout giỏ vẫn còn nhưng rỗng. Chưa có idempotency key: gửi lại POST trên giỏ đã dọn trả `EMPTY_CART`.
+
+Request/response đầy đủ xem Swagger UI; luồng checkout và trạng thái xem
+[docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md).

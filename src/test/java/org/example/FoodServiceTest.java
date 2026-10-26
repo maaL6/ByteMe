@@ -131,6 +131,15 @@ class FoodServiceTest {
         assertError(BusinessException.Type.NOT_FOUND, "FOOD_NOT_FOUND", () -> service.reserveStock(3, 1));
     }
 
+    @Test void checkoutErrorsNameTheFood() {
+        when(foods.findById(1L)).thenReturn(Optional.of(food(1, 0, "ACTIVE")));
+        when(foods.findById(2L)).thenReturn(Optional.of(food(2, 5, "INACTIVE")));
+        assertEquals("Món \"Phở\" không đủ tồn kho.",
+                assertThrows(BusinessException.class, () -> service.reserveStock(1, 1)).getMessage());
+        assertEquals("Món \"Phở\" đã ngừng bán.",
+                assertThrows(BusinessException.class, () -> service.reserveStock(2, 1)).getMessage());
+    }
+
     @Test void releaseStockRestoresEvenForInactiveFood() {
         var food = food(2, 1, "INACTIVE");
         when(foods.findById(2L)).thenReturn(Optional.of(food));

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -59,6 +60,13 @@ public class GlobalErrors {
     ResponseEntity<ApiError> integrity(DataIntegrityViolationException e, HttpServletRequest r) {
         log.warn("Vi phạm ràng buộc dữ liệu tại {}: {}", r.getRequestURI(), e.getMostSpecificCause().getMessage());
         return error(r, 409, "CONFLICT", "Dữ liệu trùng hoặc vi phạm ràng buộc.");
+    }
+
+    // Deadlock hoặc hết thời gian chờ khóa của InnoDB: transaction đã rollback, client gửi lại được.
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    ResponseEntity<ApiError> lockConflict(PessimisticLockingFailureException e, HttpServletRequest r) {
+        log.warn("Tranh chấp khóa tại {}: {}", r.getRequestURI(), e.getMostSpecificCause().getMessage());
+        return error(r, 409, "CONCURRENT_UPDATE", "Dữ liệu đang được cập nhật đồng thời, vui lòng thử lại.");
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)

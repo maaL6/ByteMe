@@ -150,6 +150,7 @@ Theo đề bài phase 1 ("chỉ triển khai chức năng cơ bản, không cầ
 - Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể cùng thấy trạng thái cũ và hoàn kho hai lần.
 - Admin sửa món đồng thời với checkout có thể ghi đè tồn kho (lost update).
 - Khách thêm món trong lúc checkout: số lượng cộng thêm vào một dòng giỏ đang được checkout có thể bị dọn mất mà không vào đơn.
+- Checkout đồng thời trên cùng món dễ deadlock: insert `order_items` lấy khóa S trên hàng `foods` (FK), sau đó `UPDATE foods` cần khóa X. InnoDB rollback một transaction; `GlobalErrors` đổi `PessimisticLockingFailureException` thành `409 CONCURRENT_UPDATE` (client gửi lại). Sắp xếp thứ tự món không đủ để tránh trường hợp này.
 
 Ràng buộc UNIQUE vẫn còn: hai lần thêm món đầu tiên đồng thời cùng tạo giỏ thì request vi phạm `carts.user_id` nhận `409 CONFLICT`. Các điểm trên để dành cho phase 2 (khóa hàng/khóa lạc quan hoặc cơ chế tương đương) và là mục tiêu đo trước/sau cải tiến trên Kaggle.
 
