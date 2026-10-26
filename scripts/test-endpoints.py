@@ -1,11 +1,13 @@
 """Exercise the running local API with disposable fixtures; never print or save JWTs.
 
-Run: python -X utf8 scripts/test-endpoints.py
+Run: python3 -X utf8 scripts/test-endpoints.py
 Requires the Docker Compose stack (docker compose up --build) on localhost:8080.
+Set BYTEME_BASE_URL for a different backend address; SQL still uses Compose mysql.
 SQL is used only for fixture categories/roles, verification and targeted cleanup.
 """
 import datetime
 import json
+import os
 import secrets
 import subprocess
 import time
@@ -15,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "http://127.0.0.1:8080"
+BASE = os.environ.get("BYTEME_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
 RUN = "api_test_" + secrets.token_hex(6)
 PASSWORD = secrets.token_urlsafe(18)
 RESULTS = []
@@ -173,6 +175,7 @@ def run():
     secondary, secondary_body = food("secondary", price=10000)
     inactive, _ = food("inactive", status="INACTIVE")
     permission_food, permission_body = food("permission")
+    other_category, _ = food("other category", categoryId=CATEGORIES[1])
     items, _ = http("Public active menu", "GET", f"/api/foods?categoryId={CATEGORIES[0]}", 200)
     check("Menu excludes inactive food", inactive not in [item["id"] for item in items], "inactive excluded", "inactive present" if inactive in [item["id"] for item in items] else "excluded")
     http("Public detail", "GET", f"/api/foods/{primary}", 200)
@@ -182,12 +185,20 @@ def run():
     http("Missing category", "GET", "/api/foods?categoryId=9223372036854775807", 404)
     matches, _ = http("Search by name", "GET", "/api/foods/search?q=" + urllib.parse.quote(RUN + " primary"), 200)
     check("Search finds fixture", isinstance(matches, list) and any(item["id"] == primary for item in matches), "primary included", "found" if isinstance(matches, list) and matches else "not found")
-    matches, _ = http("Search with price range", "GET", f"/api/foods/search?q={RUN}&categoryId={CATEGORIES[0]}&minPrice=20000&maxPrice=26000", 200)
-    check("Search applies UC05 price filters", isinstance(matches, list) and all(20000 <= item["price"] <= 26000 for item in matches),
-          "prices between 20000 and 26000", [item["price"] for item in matches] if isinstance(matches, list) else type(matches).__name__)
-    page, _ = http("Search with pagination", "GET", f"/api/foods/search?q={RUN}&categoryId={CATEGORIES[0]}&page=0&size=1", 200)
-    check("Search provides UC05 page metadata", isinstance(page, dict) and "content" in page and "totalElements" in page and len(page["content"]) <= 1,
-          "page object, at most one item", f"{type(page).__name__}, {len(page)} entries")
+    # UC05 returns all matching ACTIVE foods as an array, ordered by ID.
+    # Price filters and pagination are not part of the current contract.
+    matches, _ = http("Search without category", "GET", f"/api/foods/search?q={RUN}", 200)
+    expected_ids = sorted([primary, secondary, permission_food, other_category])
+    actual_ids = [item["id"] for item in matches] if isinstance(matches, list) else None
+    check("Search returns all matching active foods in ID order", actual_ids == expected_ids,
+          expected_ids, actual_ids)
+    matches, _ = http("Search with category", "GET", f"/api/foods/search?q={RUN}&categoryId={CATEGORIES[0]}", 200)
+    expected_ids = sorted([primary, secondary, permission_food])
+    actual_ids = [item["id"] for item in matches] if isinstance(matches, list) else None
+    check("Search applies category filter and returns an unpaginated array", actual_ids == expected_ids,
+          expected_ids, actual_ids)
+    matches, _ = http("Search without matches", "GET", f"/api/foods/search?q={RUN}_missing", 200)
+    check("Search without matches returns an empty array", matches == [], [], matches)
     http("Blank search", "GET", "/api/foods/search?q=%20", 400)
     http("Long search", "GET", "/api/foods/search?q=" + "x" * 101, 400)
     for method, path, body in [("POST", "/api/foods", food_body("anonymous")),
