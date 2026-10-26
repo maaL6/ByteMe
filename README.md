@@ -105,9 +105,67 @@ Toàn bộ thao tác checkout (`POST /api/orders`) diễn ra trong **một Datab
 
 ---
 
-## 4. Kiến trúc, tổ chức mã nguồn và công nghệ
+## 4. Kiến trúc dự án và các tài liệu chi tiết
 
-### 4.1. Kiến trúc phân tầng (Clean Architecture / Modular Monolith)
+### 4.1. Sơ đồ kiến trúc tổng thể (Architecture Diagram)
+Hệ thống được thiết kế theo mô hình **Modular Monolith** kết hợp nguyên lý **Clean Architecture**, phân tách độc lập các bounded context (`auth`, `food`, `cart`, `order`):
+
+```mermaid
+flowchart TB
+    Client["Ứng dụng khách / API Tester / k6"]
+    Docs["/openapi.yaml + Swagger UI"]
+    Client -->|"HTTP / JSON"| Security
+    Docs -.-> Client
+
+    Security["Spring Security filter chain: JWT RS256 + phân quyền vai trò + LoginIpFilter"]
+
+    subgraph App["Ứng dụng Spring Boot — Modular Monolith"]
+        direction TB
+        subgraph Auth["auth (UC01–UC02)"]
+            AuthAPI["AuthController"]
+            AuthCore["RegisterService / LoginService"]
+            AuthRepo["AccountRepository → MySqlAccountRepository → UserRepository (JPA)"]
+            AuthAPI --> AuthCore --> AuthRepo
+        end
+        subgraph Food["food (UC03–UC08)"]
+            FoodAPI["FoodController"]
+            FoodCore["FoodService"]
+            FoodRepo["FoodRepository / CategoryRepository (JPA)"]
+            FoodAPI --> FoodCore --> FoodRepo
+        end
+        subgraph Cart["cart (UC09–UC12)"]
+            CartAPI["CartController"]
+            CartCore["CartService"]
+            CartRepo["CartRepository (JPA)"]
+            CartAPI --> CartCore --> CartRepo
+        end
+        subgraph Order["order (UC13–UC18)"]
+            OrderAPI["OrderController"]
+            OrderCore["OrderService"]
+            OrderRepo["OrderRepository (JPA)"]
+            OrderAPI --> OrderCore --> OrderRepo
+        end
+        Platform["platform: BCryptPasswordHasher, LocalRsaTokenIssuer, LoginRateLimiter"]
+        Common["common: BusinessException, GlobalErrors, CurrentUser"]
+        AuthCore -.->|"PasswordHasher / TokenIssuer"| Platform
+        CartCore -->|"getAvailableFood, findByIds"| FoodCore
+        OrderCore -->|"getItemsForCheckout, clearCart"| CartCore
+        OrderCore -->|"reserveStock, releaseStock"| FoodCore
+    end
+
+    Security -->|"/api/auth/*"| AuthAPI
+    Security -->|"/api/foods/*"| FoodAPI
+    Security -->|"/api/cart/*"| CartAPI
+    Security -->|"/api/orders/*"| OrderAPI
+
+    DB[("MySQL 8.4: users, categories, foods, carts, cart_items, orders, order_items")]
+    AuthRepo --> DB
+    FoodRepo --> DB
+    CartRepo --> DB
+    OrderRepo --> DB
+```
+
+### 4.2. Nguyên lý phân tầng & Quy tắc thiết kế (Clean Architecture / ArchUnit)
 Mọi module nghiệp vụ đều tuân thủ nghiêm ngặt mô hình phân tầng hướng tâm:
 
 ```
@@ -129,12 +187,27 @@ HTTP / JSON Request
 [ CSDL MySQL 8.4 InnoDB ]
 ```
 
-### 4.2. Quy tắc thiết kế (Kiểm tra tự động qua `ArchitectureTest`)
-1. **Tầng Service độc lập:** Không được phụ thuộc vào `org.springframework.web`, `jakarta.servlet` hay `jakarta.persistence`, `org.hibernate`, `java.sql`. Ngoại lệ nghiệp vụ ném qua `BusinessException` và được chuyển đổi tự động bởi `GlobalErrors`.
+**Quy tắc thiết kế kiến trúc (được kiểm tra tự động qua `ArchitectureTest` bằng ArchUnit):**
+1. **Tầng Service độc lập:** Không phụ thuộc `org.springframework.web`, `jakarta.servlet` hay `jakarta.persistence`, `org.hibernate`, `java.sql`. Ngoại lệ nghiệp vụ ném qua `BusinessException` và được chuyển đổi tự động bởi `GlobalErrors`.
 2. **Đóng gói ORM:** Tầng Service không gọi các phương thức quản lý flush của JPA; các thao tác đồng bộ CSDL được đóng gói trong Repository (ví dụ `CartRepository.saveChanges()`).
-3. **Giao tiếp liên module chuẩn mực:** Các module `food`, `cart`, `order` chỉ được phép tương tác với nhau thông qua **Service** và **DTO** công khai, tuyệt đối không truy cập trực tiếp Entity hoặc Repository của module khác.
+3. **Giao tiếp liên module chuẩn mực:** Các module `food`, `cart`, `order` chỉ tương tác với nhau thông qua **Service** và **DTO** công khai, tuyệt đối không truy cập trực tiếp Entity hoặc Repository của module khác:
+   - Cart gọi `FoodService` để kiểm tra món còn bán và lấy thông tin hiển thị.
+   - Order gọi `CartService` để lấy món checkout / dọn giỏ và gọi `FoodService` để trừ kho / hoàn kho.
 
-### 4.3. Cấu trúc tổ chức mã nguồn (Project Directory Tree)
+### 4.3. Danh mục tài liệu chi tiết (Detailed Project Documentation)
+
+Dự án cung cấp hệ thống tài liệu kỹ thuật chi tiết tại thư mục `docs/`, `kaggle/`, `src/main/resources/static/` phục vụ việc tra cứu kiến trúc, CSDL và kiểm thử:
+
+| Tài liệu | Đường dẫn | Nội dung và phạm vi |
+| :--- | :--- | :--- |
+| **Kiến trúc hệ thống** | [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md) | Sơ đồ phân tầng Modular Monolith, ranh giới 4 module, Sequence diagram tạo đơn (UC13) và hủy đơn (UC15/UC17), quy tắc `@Transactional` và vòng đời trạng thái đơn hàng |
+| **Thiết kế CSDL** | [docs/database-design.md](docs/database-design.md) | Chi tiết lược đồ 7 bảng (`users`, `categories`, `foods`, `carts`, `cart_items`, `orders`, `order_items`), ràng buộc `CHECK`, chính sách khóa ngoại `RESTRICT`/`CASCADE`, chiến lược snapshot giá và múi giờ UTC |
+| **Đặc tả Use Cases** | [docs/Project KTPM.md](<docs/Project KTPM.md>) | Phân tích yêu cầu chi tiết 18 Use Cases (UC01–UC18), mô tả actors, điều kiện tiên quyết, luồng xử lý và quy tắc nghiệp vụ theo hình thức `DINE_IN` / `DELIVERY` |
+| **Báo cáo An toàn thông tin** | [docs/security-report.md](docs/security-report.md) | Báo cáo kiểm thử bảo mật backend bằng OWASP ZAP (Anonymous, Authenticated) và kiểm thử đối soát 72 tổ hợp vai trò × API chống lỗi BOLA (Broken Object Level Authorization) |
+| **Hợp đồng API (OpenAPI 3.0)** | [src/main/resources/static/openapi.yaml](src/main/resources/static/openapi.yaml) | Bản đặc tả OpenAPI 3.0 viết tay chuẩn hóa khớp 100% với Controller/DTO/Service, làm nguồn dữ liệu cho Swagger UI |
+| **Kết quả Kiểm thử tải** | [kaggle/results/phase1-baseline/README.md](kaggle/results/phase1-baseline/README.md) | Báo cáo đo tải k6 benchmark trên môi trường Kaggle CPU (4 vCPU, 30GB RAM), phân tích độ trễ P50/P90/P95/P99, thông lượng RPS và biểu đồ `load_test_report.png` |
+
+### 4.4. Cấu trúc tổ chức mã nguồn (Project Directory Tree)
 ```text
 ByteMe/
 ├── compose.yaml                      # Cấu hình Docker Compose (MySQL 8.4 + Spring Boot backend)
@@ -206,7 +279,7 @@ ByteMe/
         └── dev/LocalTokenCli.java    # CLI thử nghiệm tạo token fixture phục vụ phát triển
 ```
 
-### 4.4. Công nghệ sử dụng
+### 4.5. Công nghệ sử dụng
 - **Backend**: Java 21 LTS, Spring Boot 3.5.16, Spring Security 6, Spring Data JPA, Hibernate ORM, Lombok.
 - **Cơ sở dữ liệu**: MySQL 8.4 InnoDB, connection pool HikariCP.
 - **Bảo mật**: JWT bất đối xứng (RS256), băm mật khẩu BCrypt, Rate Limiting in-memory.
