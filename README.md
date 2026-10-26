@@ -89,16 +89,22 @@ Các điểm này để dành cho phase 2 và là mục tiêu đo trước/sau c
 
 OpenAPI: `/openapi.yaml`; Swagger UI: `/swagger-ui/index.html`.
 
+Đặc tả được đối chiếu tĩnh với controller, DTO, service, repository, xử lý lỗi và
+cấu hình bảo mật ngày 2026-10-26. Điều kiện PASS của lần rà soát này: đủ 18 operation
+UC01–UC18, đúng method/path/quyền/status, schema thể hiện null/default và điều kiện
+theo loại đơn, mô tả rõ bộ lọc/phân trang/chuyển trạng thái/mã lỗi. Phạm vi xác nhận
+là tài liệu theo source; không chạy API, kiểm thử động hoặc tạo tool preview.
+
 | UC | Method | Endpoint | Quyền |
 | --- | --- | --- | --- |
 | UC01 Đăng ký | POST | `/api/auth/register` | Công khai |
 | UC02 Đăng nhập | POST | `/api/auth/token` | Công khai |
 | UC03 Danh sách món | GET | `/api/foods?categoryId=` | Công khai |
-| UC04 Chi tiết món | GET | `/api/foods/{foodId}` | Công khai |
+| UC04 Chi tiết món | GET | `/api/foods/{id}` | Công khai |
 | UC05 Tìm món | GET | `/api/foods/search?q=&categoryId=` | Công khai |
 | UC06 Thêm món | POST | `/api/foods` | ADMIN |
-| UC07 Sửa món | PUT | `/api/foods/{foodId}` | ADMIN |
-| UC08 Ngừng bán món | DELETE | `/api/foods/{foodId}` | ADMIN |
+| UC07 Sửa món | PUT | `/api/foods/{id}` | ADMIN |
+| UC08 Ngừng bán món | DELETE | `/api/foods/{id}` | ADMIN |
 | UC09 Xem giỏ | GET | `/api/cart` | CUSTOMER |
 | UC10 Thêm vào giỏ | POST | `/api/cart/items` | CUSTOMER |
 | UC11 Sửa số lượng | PUT | `/api/cart/items/{cartItemId}` | CUSTOMER |
@@ -189,6 +195,8 @@ POST `/api/cart/items` với `{"foodId":1,"quantity":2}`, sau đó POST `/api/or
 - Enum phải gửi bằng tên (`DINE_IN`, `CASH`...); số hoặc chuỗi số trả 400.
 - `GET /api/orders`: `page` mặc định 0, `size` mặc định 20 (1–100), sắp xếp mới nhất trước.
   Khách thấy mọi đơn của mình; nhân viên mặc định thấy PENDING/CONFIRMED/PROCESSING/SHIPPING.
+  Khi truyền `status`, nhân viên lọc được cả COMPLETED/CANCELLED; xem chi tiết được
+  mọi đơn. ADMIN không có quyền Cart/Order; các role không kế thừa quyền nhau.
 - Sau checkout giỏ vẫn còn nhưng rỗng. Chưa có idempotency key: gửi lại POST trên giỏ đã dọn trả `EMPTY_CART`.
 
 Request/response đầy đủ xem Swagger UI; luồng checkout và trạng thái xem

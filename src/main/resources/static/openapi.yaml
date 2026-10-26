@@ -2,9 +2,34 @@ openapi: 3.0.3
 info:
   title: ByteMe API
   version: 1.0.0
-  description: >-
-    Đặc tả thống nhất cho Auth, Food, Cart và Order. Nội dung phản ánh route,
-    payload, phân quyền và HTTP status hiện có trong implementation.
+  description: |-
+    Đặc tả Auth, Food, Cart và Order theo controller, DTO, service, repository,
+    SecurityConfiguration, AuthJsonAdvice và GlobalErrors trong mã nguồn.
+
+    Quyền theo đúng role, không có kế thừa: ADMIN chỉ quản lý món, không được dùng
+    Cart/Order; EMPLOYEE không được dùng Cart hoặc tạo/hủy đơn qua route CUSTOMER.
+    Cart/Order cần JWT có sub parse được thành số nguyên int64 > 0; sai sub trả
+    403 FORBIDDEN. Bước này chỉ kiểm tra dạng ID, không truy vấn tài khoản.
+    GET Food công khai nhưng nếu gửi Bearer JWT không hợp lệ vẫn nhận 401;
+    hai route Auth không xác thực Bearer JWT.
+
+    Auth từ chối thuộc tính JSON lạ, JSON có token dư sau object và giá trị
+    số/boolean thay cho chuỗi. Food/Cart/Order bỏ qua thuộc tính lạ theo cấu hình
+    Jackson mặc định; chỉ các trường DTO được dùng, nên không nhận giá/món/userId
+    do client tự chỉ định khi checkout. Enum phải là tên chính xác, phân biệt
+    hoa thường; số hoặc chuỗi số cho enum trả 400. Trường số nguyên không nhận
+    số thực. Các giới hạn chuỗi của Bean Validation áp dụng trước khi service trim.
+
+    Lỗi được handler/filter của API xử lý có dạng ApiError và Cache-Control:
+    no-store. fieldErrors có thể rỗng, kể cả lỗi nghiệp vụ VALIDATION_ERROR.
+    HTTP 400 = VALIDATION_ERROR (hoặc PASSWORD_MISMATCH ở đăng ký, EMPTY_CART ở
+    checkout); 401 = UNAUTHENTICATED hoặc INVALID_CREDENTIALS; 403 = FORBIDDEN
+    hoặc ACCOUNT_NOT_ACTIVE ở đăng nhập. HTTP 409 dùng mã nghiệp vụ theo thao tác,
+    CONFLICT cho vi phạm ràng buộc DB (UNIQUE/FK/CHECK), CONCURRENT_UPDATE cho
+    deadlock/hết thời gian chờ khóa. Lỗi không được xử lý cụ thể trả 500 INTERNAL_ERROR.
+    Route không tồn tại/method không hỗ trợ, khi vượt qua security, được ánh xạ
+    404 NOT_FOUND / 405 METHOD_NOT_ALLOWED. Các mã này không phải lỗi nghiệp vụ
+    của một operation hợp lệ trong danh sách bên dưới.
 servers:
   - url: /
     description: Cùng origin với Swagger UI
@@ -23,6 +48,11 @@ paths:
       tags: [Auth]
       operationId: registerCustomer
       summary: Đăng ký tài khoản CUSTOMER
+      description: >-
+        Tạo CUSTOMER/ACTIVE, không cấp JWT. fullName/email/phone được trim;
+        email chuyển về chữ thường. Password giữ nguyên và confirmPassword phải
+        khớp chính xác, nếu không trả 400 PASSWORD_MISMATCH. Email hoặc phone đã
+        dùng trả 409 ACCOUNT_CONFLICT; đầu vào sai trả 400 VALIDATION_ERROR.
       security: []
       requestBody:
         required: true
@@ -52,6 +82,16 @@ paths:
       tags: [Auth]
       operationId: issueAccessToken
       summary: Đăng nhập và cấp Bearer JWT
+      description: >-
+        Email được trim và chuyển về chữ thường; password giữ nguyên. Sai email
+        hoặc password trả 401 INVALID_CREDENTIALS; chỉ sau khi password đúng mới
+        kiểm tra trạng thái tài khoản, INACTIVE/LOCKED trả 403 ACCOUNT_NOT_ACTIVE.
+        Quota in-memory mặc định 100 request/IP và 10 request/email đã chuẩn hóa
+        trong cửa sổ 900 giây, cấu hình được qua auth.login. Quota IP tính trước
+        khi đọc body; quota email tính sau khi email/password hợp lệ về định dạng;
+        cả đăng nhập thành công và sai credentials đều tiêu quota. Vượt quota trả
+        429 LOGIN_RATE_LIMITED và Retry-After. JWT RS256 có TTL mặc định 5400 giây
+        (auth.ttl-seconds); chưa có refresh/logout/revocation.
       security: []
       requestBody:
         required: true
@@ -82,6 +122,10 @@ paths:
       tags: [Food]
       operationId: listActiveFoods
       summary: Xem danh sách món đang bán
+      description: >-
+        Chỉ trả ACTIVE, kể cả món có tồn kho 0; sắp xếp id tăng dần, không phân
+        trang. categoryId không tồn tại trả 404 CATEGORY_NOT_FOUND; danh mục hợp
+        lệ nhưng chưa có món ACTIVE trả 200 với mảng rỗng.
       security: []
       parameters:
         - $ref: '#/components/parameters/CategoryIdQuery'
@@ -90,6 +134,8 @@ paths:
           $ref: '#/components/responses/FoodList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -98,7 +144,11 @@ paths:
       tags: [Food]
       operationId: createFood
       summary: Thêm món ăn
-      description: Chỉ ADMIN.
+      description: >-
+        Chỉ ADMIN. categoryId phải tồn tại (404 CATEGORY_NOT_FOUND). Tên được trim
+        và kiểm tra trùng toàn thực đơn, kể cả món INACTIVE (409 FOOD_NAME_CONFLICT;
+        race vi phạm UNIQUE trả CONFLICT). stockQuantity null/bỏ qua mặc định 0;
+        status null/bỏ qua mặc định ACTIVE. Có thể tạo trực tiếp món INACTIVE.
       security:
         - bearerAuth: []
       requestBody:
@@ -125,22 +175,29 @@ paths:
       tags: [Food]
       operationId: searchActiveFoods
       summary: Tìm món đang bán theo từ khóa
+      description: >-
+        Tìm chuỗi con trong tên hoặc mô tả, không phân biệt hoa thường; q được trim.
+        Các ký tự %, _ và ! được escape, không là wildcard do client chỉ định.
+        Chỉ trả ACTIVE, kể cả tồn kho 0; id tăng dần, không phân trang. Kiểm tra q
+        trước categoryId; q sai trả 400 VALIDATION_ERROR, danh mục không tồn tại
+        trả 404 CATEGORY_NOT_FOUND, không có kết quả trả 200 với mảng rỗng.
       security: []
       parameters:
         - name: q
           in: query
           required: true
-          description: Từ khóa sau khi trim phải có từ 1 đến 100 ký tự.
+          description: Từ khóa sau String.trim phải có từ 1 đến 100 đơn vị UTF-16; khoảng trắng hai đầu không tính vào giới hạn.
           schema:
             type: string
             minLength: 1
-            maxLength: 100
         - $ref: '#/components/parameters/CategoryIdQuery'
       responses:
         '200':
           $ref: '#/components/responses/FoodList'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -152,12 +209,15 @@ paths:
       tags: [Food]
       operationId: getActiveFood
       summary: Xem chi tiết món đang bán
+      description: Món không tồn tại hoặc INACTIVE trả 404 FOOD_NOT_FOUND, áp dụng cả với ADMIN.
       security: []
       responses:
         '200':
           $ref: '#/components/responses/Food'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -166,7 +226,12 @@ paths:
       tags: [Food]
       operationId: updateFood
       summary: Cập nhật món ăn
-      description: Chỉ ADMIN.
+      description: >-
+        Chỉ ADMIN; sửa được cả món INACTIVE. categoryId, name, price luôn bắt buộc.
+        name được trim; tên trùng món khác, kể cả INACTIVE, trả 409 FOOD_NAME_CONFLICT.
+        description/imageUrl bỏ qua hoặc null sẽ xóa giá trị cũ; stockQuantity/status
+        bỏ qua hoặc null giữ nguyên. Có thể đặt status ACTIVE để bán lại. Món không
+        tồn tại trả 404 FOOD_NOT_FOUND; categoryId không tồn tại trả 404 CATEGORY_NOT_FOUND.
       security:
         - bearerAuth: []
       requestBody:
@@ -193,7 +258,10 @@ paths:
       operationId: deactivateFood
       summary: Ngừng bán món ăn
       description: >-
-        Soft delete bằng trạng thái INACTIVE. Chỉ ADMIN.
+        Chỉ ADMIN. Soft delete bằng trạng thái INACTIVE, giữ bản ghi và các tham chiếu.
+        Gọi lại với món đã INACTIVE vẫn trả 204, không có body. ID không tồn tại
+        (kể cả ≤ 0) trả 404 FOOD_NOT_FOUND. Chỉ trả 400 VALIDATION_ERROR khi id
+        không chuyển được sang int64 (không phải số nguyên hoặc vượt miền int64).
       security:
         - bearerAuth: []
       responses:
@@ -218,7 +286,9 @@ paths:
       summary: Xem giỏ hàng hiện tại
       description: >-
         Khách chưa có giỏ nhận 200 với `id: null` và `items: []`; thao tác đọc
-        không tạo giỏ. Giỏ được tạo ở lần thêm món đầu tiên.
+        không tạo giỏ. Chỉ CUSTOMER; giỏ được tạo ở lần thêm món đầu tiên.
+        Các dòng theo id tăng dần. food là thông tin hiện tại, không phải snapshot;
+        món đã INACTIVE vẫn xuất hiện trong giỏ. Giỏ không giữ chỗ hoặc trừ tồn kho.
       security:
         - bearerAuth: []
       responses:
@@ -235,6 +305,11 @@ paths:
       tags: [Cart]
       operationId: addCartItem
       summary: Thêm món vào giỏ
+      description: >-
+        Chỉ CUSTOMER. Tạo giỏ nếu chưa có; món đã có thì cộng quantity vào dòng cũ.
+        Món không tồn tại trả 404 FOOD_NOT_FOUND; INACTIVE trả 409 FOOD_UNAVAILABLE.
+        Không kiểm tra/trừ tồn kho. Tổng quantity vượt 2147483647 trả 400 VALIDATION_ERROR.
+        Thành công trả 200 với toàn bộ giỏ sau thao tác.
       security:
         - bearerAuth: []
       requestBody:
@@ -270,6 +345,11 @@ paths:
       tags: [Cart]
       operationId: updateCartItem
       summary: Đặt lại số lượng của một dòng giỏ hàng
+      description: >-
+        Chỉ CUSTOMER; quantity thay thế số lượng hiện tại, không cộng dồn. Không
+        kiểm tra trạng thái món hoặc tồn kho. Chưa có giỏ, dòng không tồn tại hoặc
+        thuộc giỏ người khác đều trả 404 CART_ITEM_NOT_FOUND. quantity = 0 trả 400
+        VALIDATION_ERROR; muốn xóa phải dùng DELETE. Trả 200 với toàn bộ giỏ.
       security:
         - bearerAuth: []
       requestBody:
@@ -301,6 +381,10 @@ paths:
       tags: [Cart]
       operationId: removeCartItem
       summary: Xóa một dòng khỏi giỏ hàng
+      description: >-
+        Chỉ CUSTOMER. Chưa có giỏ, dòng không tồn tại hoặc thuộc giỏ người khác
+        đều trả 404 CART_ITEM_NOT_FOUND, kể cả gọi lại sau khi đã xóa. Trả 200 với
+        toàn bộ giỏ còn lại; xóa dòng cuối giữ nguyên bản ghi giỏ với items rỗng.
       security:
         - bearerAuth: []
       responses:
@@ -324,8 +408,18 @@ paths:
       operationId: createOrder
       summary: Tạo đơn từ giỏ hàng hiện tại
       description: >-
-        Chưa có giỏ hoặc giỏ rỗng trả 400 EMPTY_CART. Phase 1 không khóa hàng
-        khi checkout, nên các checkout đồng thời có thể bán vượt tồn kho.
+        Chỉ CUSTOMER. Kiểm tra quy tắc orderType trước khi đọc giỏ; sai trả 400
+        VALIDATION_ERROR. Sau đó chưa có giỏ hoặc giỏ rỗng trả 400 EMPTY_CART.
+        Trong một transaction: đọc giỏ theo thứ tự dòng, kiểm tra ACTIVE và tồn
+        kho từng món, trừ kho, lưu đơn PENDING với snapshot tên/giá hiện tại từ
+        server, rồi dọn giỏ (giữ ID giỏ). Bất kỳ lỗi nào đều rollback toàn bộ.
+        Món không tồn tại trả 404 FOOD_NOT_FOUND, INACTIVE trả 409 FOOD_UNAVAILABLE,
+        thiếu kho trả 409 INSUFFICIENT_STOCK. Không có phí giao hàng/thuế trong tổng.
+        paymentMethod chỉ ghi nhận phương thức, không thực hiện thanh toán.
+        Chưa có idempotency key: gửi lại sau khi giỏ đã dọn trả EMPTY_CART.
+        Phase 1 không khóa hàng; checkout đồng thời có thể bán vượt kho hoặc tạo
+        đơn trùng từ cùng giỏ. Deadlock/hết thời gian chờ khóa trả 409 CONCURRENT_UPDATE;
+        server không tự retry.
       security:
         - bearerAuth: []
       requestBody:
@@ -369,7 +463,15 @@ paths:
       tags: [Order]
       operationId: listOrders
       summary: Liệt kê đơn theo quyền của người dùng hiện tại
-      description: CUSTOMER chỉ thấy đơn của mình; EMPLOYEE thấy các đơn cần xử lý.
+      description: >-
+        Chỉ CUSTOMER/EMPLOYEE; ADMIN trả 403 FORBIDDEN. CUSTOMER luôn chỉ thấy đơn
+        của mình, mặc định mọi trạng thái. EMPLOYEE mặc định xem đơn của mọi khách
+        ở PENDING/CONFIRMED/PROCESSING/SHIPPING; nếu truyền status thì lọc đúng
+        trạng thái đó, kể cả COMPLETED/CANCELLED. orderType kết hợp với status
+        bằng AND. Sắp xếp createdAt giảm dần, rồi id giảm dần. Không có kết quả
+        hoặc page vượt số trang trả 200 với content rỗng; totalElements là số đơn
+        khớp bộ lọc, không phải số dòng của trang hiện tại. page * size phải ≤ 2147483647;
+        phân trang sai hoặc tên enum sai trả 400 VALIDATION_ERROR.
       security:
         - bearerAuth: []
       parameters:
@@ -388,13 +490,16 @@ paths:
           required: false
           schema:
             type: integer
+            format: int32
             minimum: 0
+            maximum: 2147483647
             default: 0
         - name: size
           in: query
           required: false
           schema:
             type: integer
+            format: int32
             minimum: 1
             maximum: 100
             default: 20
@@ -416,6 +521,12 @@ paths:
       tags: [Order]
       operationId: getOrder
       summary: Xem đơn hàng và snapshot món
+      description: >-
+        Chỉ CUSTOMER/EMPLOYEE. EMPLOYEE xem được mọi đơn, kể cả COMPLETED/CANCELLED,
+        không bị giới hạn bởi queue mặc định của GET /api/orders. CUSTOMER xem
+        đơn của mình; đơn tồn tại nhưng thuộc người khác trả 403 FORBIDDEN.
+        ADMIN/sai role hoặc sub không parse được thành int64 > 0 cũng trả 403.
+        Đơn không tồn tại trả 404 ORDER_NOT_FOUND; JWT thiếu/sai/hết hạn trả 401.
       security:
         - bearerAuth: []
       responses:
@@ -435,6 +546,13 @@ paths:
       tags: [Order]
       operationId: cancelOrder
       summary: CUSTOMER hủy đơn PENDING của mình
+      description: >-
+        Chỉ CUSTOMER. Đơn không tồn tại trả 404 ORDER_NOT_FOUND; đơn của người
+        khác trả 403 FORBIDDEN. Chỉ PENDING được chuyển sang CANCELLED; các trạng
+        thái khác, kể cả đã CANCELLED, trả 409 INVALID_ORDER_TRANSITION. Hoàn kho
+        từng dòng (kể cả món INACTIVE), ghi cancelledAt/updatedAt trong cùng
+        transaction; giữ bản ghi đơn và snapshot món. Trả 200 với đơn sau hủy.
+        Phase 1 chưa chống hai yêu cầu hủy đồng thời hoàn kho hai lần.
       security:
         - bearerAuth: []
       responses:
@@ -459,6 +577,11 @@ paths:
       tags: [Order]
       operationId: confirmOrder
       summary: EMPLOYEE xác nhận đơn PENDING
+      description: >-
+        Chỉ EMPLOYEE; không cần body. Tương đương PUT status=CONFIRMED: chỉ PENDING
+        được xác nhận; ghi confirmedBy bằng ID nhân viên từ JWT và confirmedAt,
+        updatedAt. Đơn không tồn tại trả 404 ORDER_NOT_FOUND; mọi trạng thái khác,
+        kể cả CONFIRMED, trả 409 INVALID_ORDER_TRANSITION.
       security:
         - bearerAuth: []
       responses:
@@ -483,6 +606,20 @@ paths:
       tags: [Order]
       operationId: updateOrderStatus
       summary: EMPLOYEE chuyển trạng thái hoặc hủy đơn
+      description: |-
+        Chỉ EMPLOYEE; áp dụng cho đơn của mọi khách. Các bước chuyển duy nhất:
+        - PENDING → CONFIRMED hoặc CANCELLED.
+        - CONFIRMED → PROCESSING hoặc CANCELLED.
+        - PROCESSING → COMPLETED (DINE_IN), SHIPPING (DELIVERY), hoặc CANCELLED.
+        - SHIPPING → COMPLETED; COMPLETED/CANCELLED không chuyển tiếp.
+
+        status=PENDING luôn trả 400 VALIDATION_ERROR, trước khi tìm đơn.
+        Bước chuyển khác không hợp lệ, kể cả gửi lại trạng thái hiện tại, trả
+        409 INVALID_ORDER_TRANSITION; đơn không tồn tại trả 404 ORDER_NOT_FOUND.
+        Chuyển CONFIRMED ghi confirmedBy/confirmedAt như route confirm; mọi lần
+        chuyển cập nhật updatedAt, COMPLETED ghi completedAt, CANCELLED ghi
+        cancelledAt và hoàn kho trong cùng transaction. Không hủy được SHIPPING.
+        Phase 1 chưa chống hoàn kho hai lần khi hủy đồng thời.
       security:
         - bearerAuth: []
       requestBody:
@@ -516,7 +653,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT nhận từ POST /api/auth/token.
+      description: >-
+        JWT RS256 nhận từ POST /api/auth/token, gửi Authorization: Bearer <token>.
+        Kiểm tra chữ ký, iss=sa-local-dev, aud chứa sa-mock-api, iat/exp và nbf
+        (nếu có), sub không rỗng và role thuộc CUSTOMER/EMPLOYEE/ADMIN. Không có
+        kế thừa role hoặc tra lại trạng thái tài khoản ở mỗi request. Cart/Order
+        kiểm tra thêm sub là int64 > 0. JWT hết hạn hoặc sai trả 401 UNAUTHENTICATED.
   parameters:
     CategoryIdQuery:
       name: categoryId
@@ -661,13 +803,22 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
     NotFound:
-      description: Không tìm thấy dòng giỏ, food, category hoặc order tương ứng.
+      description: >-
+        FOOD_NOT_FOUND, CATEGORY_NOT_FOUND, CART_ITEM_NOT_FOUND hoặc ORDER_NOT_FOUND
+        tùy thao tác. Food GET coi INACTIVE là FOOD_NOT_FOUND; thêm giỏ/checkout
+        coi INACTIVE là 409 FOOD_UNAVAILABLE. Dòng giỏ của khách khác trả
+        CART_ITEM_NOT_FOUND; đơn của khách khác trả 403 FORBIDDEN.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
     Conflict:
-      description: Trùng dữ liệu, món ngừng bán, thiếu tồn kho, chuyển trạng thái không hợp lệ hoặc tranh chấp khóa khi ghi đồng thời (CONCURRENT_UPDATE, có thể gửi lại).
+      description: >-
+        ACCOUNT_CONFLICT (đăng ký), FOOD_NAME_CONFLICT (tạo/sửa món),
+        FOOD_UNAVAILABLE (thêm giỏ/checkout), INSUFFICIENT_STOCK (checkout),
+        INVALID_ORDER_TRANSITION (xử lý đơn), CONFLICT (ràng buộc DB, gồm UNIQUE/FK/CHECK),
+        CONCURRENT_UPDATE (deadlock/hết thời gian chờ khóa; transaction rollback,
+        có thể gửi lại; server không tự retry).
       content:
         application/json:
           schema:
@@ -691,7 +842,7 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
     InternalServerError:
-      description: Lỗi hệ thống không được xử lý cụ thể.
+      description: INTERNAL_ERROR — lỗi hệ thống không được xử lý cụ thể.
       content:
         application/json:
           schema:
@@ -704,6 +855,13 @@ components:
         enum: [no-store]
   schemas:
     RegisterRequest:
+      description: >-
+        Chuỗi fullName/email/phone được trim bằng String.trim trước kiểm tra;
+        fullName không blank, tối đa 150 Unicode code point; email sau trim tối đa
+        254 code point, chuyển chữ thường rồi kiểm tra phần trước @ tối đa 64 đơn
+        vị UTF-16 và mẫu [^@\s]+@[^@\s]+\.[^@\s]+. Phone sau trim
+        khớp số nội địa 0 + 9 chữ số hoặc quốc tế + và 8–15 chữ số, chữ số đầu 1–9.
+        Các giới hạn trên áp dụng cho giá trị sau chuẩn hóa, không phải chuỗi thô.
       type: object
       additionalProperties: false
       required: [fullName, email, phone, password, confirmPassword]
@@ -711,41 +869,46 @@ components:
         fullName:
           type: string
           minLength: 1
-          maxLength: 150
+          description: Bắt buộc, không blank sau trim; tối đa 150 code point sau trim.
         email:
           type: string
-          format: email
-          minLength: 3
-          maxLength: 254
+          minLength: 5
+          description: Bắt buộc; kiểm tra email và giới hạn độ dài sau trim như mô tả schema.
+          example: customer@example.com
         phone:
           type: string
-          maxLength: 20
-          pattern: '^(?:0[0-9]{9}|\+[1-9][0-9]{7,14})$'
+          pattern: '^[\x00-\x20]*(?:0[0-9]{9}|\+[1-9][0-9]{7,14})[\x00-\x20]*$'
+          description: Bắt buộc; khoảng trắng/control ở hai đầu được trim trước kiểm tra.
+          example: '0900000001'
         password:
           type: string
           format: password
+          description: Giữ nguyên, không trim; tối đa 72 byte UTF-8 và 72 Unicode code point.
           writeOnly: true
           minLength: 8
           maxLength: 72
         confirmPassword:
           type: string
           format: password
+          description: Giữ nguyên, không trim; tối đa 72 byte UTF-8 và 72 Unicode code point.
           writeOnly: true
           minLength: 8
           maxLength: 72
     LoginRequest:
+      description: Email chuẩn hóa/kiểm tra như RegisterRequest; password không trim.
       type: object
       additionalProperties: false
       required: [email, password]
       properties:
         email:
           type: string
-          format: email
-          minLength: 3
-          maxLength: 254
+          minLength: 5
+          description: Sau trim tối đa 254 code point; chuyển chữ thường rồi kiểm tra mẫu email và phần trước @ tối đa 64 đơn vị UTF-16.
+          example: customer@example.com
         password:
           type: string
           format: password
+          description: Giữ nguyên, không trim; tối đa 72 byte UTF-8 và 72 Unicode code point.
           writeOnly: true
           minLength: 1
           maxLength: 72
@@ -792,6 +955,12 @@ components:
       type: string
       enum: [ACTIVE, INACTIVE, LOCKED]
     FoodRequest:
+      description: >-
+        Dùng cho cả POST và PUT; categoryId/name/price bắt buộc ở cả hai.
+        name không blank và tối đa 150 đơn vị UTF-16 trước trim, lưu tên đã trim.
+        Tên duy nhất toàn thực đơn theo collation MySQL utf8mb4_0900_as_ci
+        (không phân biệt hoa thường, phân biệt dấu). description/imageUrl giữ nguyên,
+        không trim; imageUrl chỉ kiểm tra độ dài, không kiểm tra định dạng URL.
       type: object
       required: [categoryId, name, price]
       properties:
@@ -811,19 +980,25 @@ components:
           type: number
           minimum: 0
           exclusiveMinimum: true
-          description: Lớn hơn 0; tối đa 13 chữ số phần nguyên và 2 chữ số thập phân.
+          maximum: 9999999999999.99
+          multipleOf: 0.01
+          description: VND, lớn hơn 0; @Digits giới hạn 13 chữ số phần nguyên và 2 chữ số phần thập phân của BigDecimal đầu vào.
         imageUrl:
           type: string
           maxLength: 2048
           nullable: true
         stockQuantity:
           type: integer
+          format: int32
           minimum: 0
-          description: Khi tạo mặc định 0; khi cập nhật bỏ trống thì giữ nguyên.
+          maximum: 2147483647
+          nullable: true
+          description: Null hoặc bỏ qua thì tạo mặc định 0, cập nhật giữ nguyên.
         status:
-          allOf:
-            - $ref: '#/components/schemas/FoodStatus'
-          description: Khi tạo mặc định ACTIVE; khi cập nhật bỏ trống thì giữ nguyên.
+          type: string
+          enum: [ACTIVE, INACTIVE, null]
+          nullable: true
+          description: Null hoặc bỏ qua thì tạo mặc định ACTIVE, cập nhật giữ nguyên.
     Food:
       type: object
       required: [id, categoryId, name, price, stockQuantity, status]
@@ -861,14 +1036,18 @@ components:
           minimum: 1
         quantity:
           type: integer
+          format: int32
           minimum: 1
+          maximum: 2147483647
     UpdateCartItemRequest:
       type: object
       required: [quantity]
       properties:
         quantity:
           type: integer
+          format: int32
           minimum: 1
+          maximum: 2147483647
     Cart:
       type: object
       required: [id, userId, items]
@@ -896,10 +1075,74 @@ components:
           $ref: '#/components/schemas/Food'
         quantity:
           type: integer
+          format: int32
           minimum: 1
+          maximum: 2147483647
     CreateOrderRequest:
+      description: >-
+        DINE_IN bắt buộc tableNumber không rỗng sau trim, chỉ CASH/BANK_TRANSFER;
+        recipientName/shippingPhone/shippingAddress phải bỏ qua hoặc null (chuỗi
+        rỗng cũng bị từ chối). DELIVERY bắt buộc cả ba trường giao hàng không rỗng
+        sau trim, chỉ COD/BANK_TRANSFER; tableNumber phải bỏ qua hoặc null.
+        Trường bắt buộc được trim trước lưu; note trim, blank thành null.
+        Độ dài tối đa được kiểm tra trên chuỗi thô bằng @Size trước trim.
+        shippingPhone chỉ kiểm tra không rỗng và độ dài, không áp dụng mẫu số điện
+        thoại của Auth. Không nhận danh sách món/giá/userId từ client.
       type: object
       required: [orderType, paymentMethod]
+      oneOf:
+        - title: DINE_IN
+          type: object
+          required: [tableNumber]
+          properties:
+            orderType:
+              type: string
+              enum: [DINE_IN]
+            paymentMethod:
+              type: string
+              enum: [CASH, BANK_TRANSFER]
+            tableNumber:
+              type: string
+              minLength: 1
+              pattern: '[^\x00-\x20]'
+            recipientName:
+              type: string
+              nullable: true
+              enum: [null]
+            shippingPhone:
+              type: string
+              nullable: true
+              enum: [null]
+            shippingAddress:
+              type: string
+              nullable: true
+              enum: [null]
+        - title: DELIVERY
+          type: object
+          required: [recipientName, shippingPhone, shippingAddress]
+          properties:
+            orderType:
+              type: string
+              enum: [DELIVERY]
+            paymentMethod:
+              type: string
+              enum: [COD, BANK_TRANSFER]
+            tableNumber:
+              type: string
+              nullable: true
+              enum: [null]
+            recipientName:
+              type: string
+              minLength: 1
+              pattern: '[^\x00-\x20]'
+            shippingPhone:
+              type: string
+              minLength: 1
+              pattern: '[^\x00-\x20]'
+            shippingAddress:
+              type: string
+              minLength: 1
+              pattern: '[^\x00-\x20]'
       properties:
         orderType:
           $ref: '#/components/schemas/OrderType'
@@ -926,12 +1169,21 @@ components:
           maxLength: 500
           nullable: true
     UpdateOrderStatusRequest:
+      description: >-
+        status bắt buộc, không null; PENDING là giá trị enum có thể parse nhưng
+        service luôn từ chối bằng 400 VALIDATION_ERROR. Xem operation updateOrderStatus
+        để biết các bước chuyển; bước chuyển sai trả 409 INVALID_ORDER_TRANSITION.
       type: object
       required: [status]
       properties:
         status:
           $ref: '#/components/schemas/OrderStatus'
     Order:
+      description: >-
+        foodName/unitPrice trong items là snapshot khi checkout, không đổi theo
+        thực đơn hiện tại. totalAmount = tổng lineTotal, không cộng phí/thuế.
+        Timestamp ở UTC, độ chính xác microsecond; các mốc chưa phát sinh là null.
+        confirmedBy là ID nhân viên từ JWT đã xác nhận.
       type: object
       required:
         - id
@@ -999,6 +1251,7 @@ components:
             $ref: '#/components/schemas/OrderItem'
         totalAmount:
           type: number
+          description: VND; tổng unitPrice × quantity của mọi dòng đơn.
     OrderItem:
       type: object
       required: [foodId, foodName, unitPrice, quantity, lineTotal]
@@ -1012,9 +1265,12 @@ components:
           type: number
         quantity:
           type: integer
+          format: int32
           minimum: 1
+          maximum: 2147483647
         lineTotal:
           type: number
+          description: VND; unitPrice × quantity.
     OrderPage:
       type: object
       required: [content, page, size, totalElements]
