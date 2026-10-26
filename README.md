@@ -148,16 +148,22 @@ bash scripts/issue-local-tokens.sh
 
 OpenAPI: `/openapi.yaml` | Swagger UI: `/swagger-ui/index.html`
 
+Đặc tả được đối chiếu tĩnh với controller, DTO, service, repository, xử lý lỗi và
+cấu hình bảo mật ngày 2026-10-26. Điều kiện PASS của lần rà soát này: đủ 18 operation
+UC01–UC18, đúng method/path/quyền/status, schema thể hiện null/default và điều kiện
+theo loại đơn, mô tả rõ bộ lọc/phân trang/chuyển trạng thái/mã lỗi. Phạm vi xác nhận
+là tài liệu theo source; không chạy API, kiểm thử động hoặc tạo tool preview.
+
 | UC | Method | Endpoint | Quyền hạn |
 | --- | --- | --- | --- |
 | UC01 Đăng ký | POST | `/api/auth/register` | Công khai |
 | UC02 Đăng nhập | POST | `/api/auth/token` | Công khai |
 | UC03 Danh sách món | GET | `/api/foods?categoryId=` | Công khai |
-| UC04 Chi tiết món | GET | `/api/foods/{foodId}` | Công khai |
+| UC04 Chi tiết món | GET | `/api/foods/{id}` | Công khai |
 | UC05 Tìm món | GET | `/api/foods/search?q=&categoryId=` | Công khai |
 | UC06 Thêm món | POST | `/api/foods` | ADMIN |
-| UC07 Sửa món | PUT | `/api/foods/{foodId}` | ADMIN |
-| UC08 Ngừng bán món | DELETE | `/api/foods/{foodId}` | ADMIN |
+| UC07 Sửa món | PUT | `/api/foods/{id}` | ADMIN |
+| UC08 Ngừng bán món | DELETE | `/api/foods/{id}` | ADMIN |
 | UC09 Xem giỏ | GET | `/api/cart` | CUSTOMER |
 | UC10 Thêm vào giỏ | POST | `/api/cart/items` | CUSTOMER |
 | UC11 Sửa số lượng | PUT | `/api/cart/items/{cartItemId}` | CUSTOMER |
@@ -213,8 +219,8 @@ Sau khi đăng nhập tài khoản `CUSTOMER`, thêm món vào giỏ qua `POST /
 ### Lưu ý quan trọng
 - Client **không gửi** danh sách món, đơn giá hay `userId`; server tự lấy từ giỏ hàng và JWT.
 - Giá trị enum (`DINE_IN`, `CASH`, `COD`...) bắt buộc gửi dạng tên chuỗi; gửi dạng số hoặc chuỗi số sẽ trả về lỗi 400.
-- `GET /api/orders`: Hỗ trợ phân trang với `page` mặc định là `0`, `size` mặc định là `20` (tối đa 100), sắp xếp đơn mới nhất lên đầu.
-- Chưa hỗ trợ idempotency key: gửi lại request POST tạo đơn khi giỏ đã dọn sẽ trả lỗi `400 EMPTY_CART`.
+- `GET /api/orders`: Hỗ trợ phân trang với `page` mặc định là `0`, `size` mặc định là `20` (tối đa 100), sắp xếp đơn mới nhất lên đầu. Khách thấy mọi đơn của mình; nhân viên mặc định thấy PENDING/CONFIRMED/PROCESSING/SHIPPING; khi truyền `status`, nhân viên lọc được cả COMPLETED/CANCELLED; xem chi tiết được mọi đơn. ADMIN không có quyền Cart/Order; các role không kế thừa quyền nhau.
+- Sau checkout giỏ vẫn còn nhưng rỗng. Chưa có idempotency key: gửi lại request POST tạo đơn khi giỏ đã dọn sẽ trả lỗi `400 EMPTY_CART`.
 
 ---
 

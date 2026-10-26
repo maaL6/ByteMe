@@ -18,6 +18,16 @@ Quy tắc đơn hàng dùng chung:
 - **Phase 1 / phase 2:** phase 1 chỉ triển khai chức năng cơ bản, không khóa hàng hay khóa lạc quan. Các yêu cầu về tính đúng khi chạy **đồng thời** (không bán vượt kho khi nhiều checkout tranh chấp, một giỏ chỉ tạo một đơn, hủy đồng thời chỉ hoàn kho một lần, sửa tồn kho của Admin không ghi đè checkout) vẫn là quy tắc nghiệp vụ nhưng được đánh dấu **(phase 2)** bên dưới; khi chạy tuần tự, phase 1 vẫn tuân thủ đầy đủ. Ở phase 1, hai checkout đồng thời có thể cùng đọc một mức tồn kho và cùng ghi `stock - qty` (lost update) nên có thể bán vượt kho; `stock_quantity` không âm vì service chỉ ghi sau khi kiểm tra `stock >= qty`.
 - Tầng nghiệp vụ không import framework web/thư viện DB (dùng Spring `@Service`/`@Transactional`, repository là Spring Data); lỗi nghiệp vụ của Food/Cart/Order được `GlobalErrors` chuyển thành HTTP status (Auth dùng `AuthErrors`). API chạy HTTP thường (cổng 8080), chưa cấu hình HTTPS.
 
+Hợp đồng HTTP/JSON chi tiết theo mã nguồn: [openapi.yaml](../src/main/resources/static/openapi.yaml).
+Role không kế thừa: ADMIN không dùng Cart/Order; EMPLOYEE xem được chi tiết mọi đơn,
+nhưng dùng route cập nhật status để hủy, không dùng DELETE dành cho CUSTOMER.
+ID trên path Food có tên `id`; ID món trong body thêm giỏ vẫn là `foodId`.
+ID path/query không parse được thành int64 trả 400; ID đã parse nhưng không tồn tại,
+kể cả ≤ 0, trả 404. Riêng ID trong body Food/Cart phải dương, sai trả 400.
+Mọi giới hạn password còn chịu trần 72 byte UTF-8 và password không được trim.
+Các thao tác ghi có thể trả 409 `CONFLICT` khi vi phạm ràng buộc DB hoặc
+`CONCURRENT_UPDATE` khi deadlock/hết thời gian chờ khóa (phase 1 đã có ánh xạ lỗi này).
+
 Sơ đồ kiến trúc và sequence: [architecture-single-restaurant.md](architecture-single-restaurant.md).
 
 ### **A. Quản lý tài khoản**
@@ -90,13 +100,13 @@ Sơ đồ kiến trúc và sequence: [architecture-single-restaurant.md](archite
 | **Requirement Name** | Xem chi tiết món ăn |
 | **Actor** | Khách hàng |
 | **Requirement Description** | Cho phép khách hàng xem thông tin chi tiết của một món ăn đang được bán, bao gồm tên, mô tả, giá, hình ảnh, categoryId, tồn kho và trạng thái. |
-| **Input** | foodId |
+| **Input** | id |
 | **Preconditions** | 1\. Thiết bị có kết nối mạng và truy cập được vào ứng dụng/API. 2\. Khách hàng không bắt buộc đăng nhập. |
-| **Functional Requirement** | 1\. Khách hàng gửi yêu cầu qua GET /api/foods/{foodId}. 2\. Hệ thống kiểm tra định dạng foodId. 3\. Truy vấn món ăn theo foodId thông qua Food Repository. 4\. Kiểm tra món ăn tồn tại và có trạng thái ACTIVE; món INACTIVE được xử lý như không tồn tại. 5\. Chuyển dữ liệu sang DTO (cùng các trường như UC03). 6\. Trả 200 với chi tiết món ăn dưới dạng JSON. |
+| **Functional Requirement** | 1\. Khách hàng gửi yêu cầu qua GET /api/foods/{id}. 2\. Hệ thống kiểm tra định dạng id. 3\. Truy vấn món ăn theo id thông qua Food Repository. 4\. Kiểm tra món ăn tồn tại và có trạng thái ACTIVE; món INACTIVE được xử lý như không tồn tại. 5\. Chuyển dữ liệu sang DTO (cùng các trường như UC03). 6\. Trả 200 với chi tiết món ăn dưới dạng JSON. |
 | **Nonfunctional Requirement** | 1\. API tuân thủ REST và trả về JSON. 2\. Tầng nghiệp vụ không truy cập trực tiếp Database. |
-| **Error Handling** | 400 Bad Request (`VALIDATION_ERROR`): foodId không đúng định dạng. 404 Not Found (`FOOD_NOT_FOUND`): món ăn không tồn tại hoặc đang INACTIVE. 500 Internal Server Error: lỗi truy xuất dữ liệu. |
+| **Error Handling** | 400 Bad Request (`VALIDATION_ERROR`): id không đúng định dạng. 404 Not Found (`FOOD_NOT_FOUND`): món ăn không tồn tại hoặc đang INACTIVE. 500 Internal Server Error: lỗi truy xuất dữ liệu. |
 
-### API: GET /api/foods/{foodId}
+### API: GET /api/foods/{id}
 
 ### UC05 \- Tìm kiếm món ăn
 
@@ -122,7 +132,7 @@ Sơ đồ kiến trúc và sequence: [architecture-single-restaurant.md](archite
 | **Requirement Description** | Cho phép Admin tạo một món ăn mới thuộc danh mục hợp lệ trong thực đơn của nhà hàng. Hệ thống kiểm tra dữ liệu, quyền truy cập và tính trùng lặp trước khi lưu. |
 | **Input** | categoryId, name, price (bắt buộc); description, imageUrl, stockQuantity (mặc định 0), status (mặc định ACTIVE) |
 | **Preconditions** | 1\. Admin đã đăng nhập và có quyền quản lý món ăn. 2\. Danh mục được tham chiếu đã tồn tại. 3\. Kết nối đến kho dữ liệu đang hoạt động. |
-| **Functional Requirement** | 1\. Admin gửi yêu cầu qua POST /api/foods. 2\. Hệ thống xác thực JWT và kiểm tra quyền Admin. 3\. Kiểm tra dữ liệu: categoryId là số dương; name không rỗng, ≤ 150 ký tự; description ≤ 16000 ký tự; price \> 0, tối đa 13 chữ số phần nguyên và 2 chữ số thập phân; imageUrl ≤ 2048 ký tự; stockQuantity là số nguyên không âm; status là ACTIVE hoặc INACTIVE. Giới hạn độ dài được kiểm tra trước khi trim. 4\. Kiểm tra categoryId tồn tại. 5\. Trim tên và kiểm tra không trùng trong toàn bộ thực đơn (không phân biệt hoa thường). 6\. Tạo món ăn, dùng mặc định stockQuantity = 0 và status = ACTIVE nếu không gửi. 7\. Lưu món ăn thông qua Food Repository trong một giao dịch. 8\. Trả về món ăn vừa tạo dưới dạng JSON với mã 201 Created. |
+| **Functional Requirement** | 1\. Admin gửi yêu cầu qua POST /api/foods. 2\. Hệ thống xác thực JWT và kiểm tra quyền Admin. 3\. Kiểm tra dữ liệu: categoryId là số dương; name không rỗng, ≤ 150 ký tự; description ≤ 16000 ký tự; price \> 0, tối đa 13 chữ số phần nguyên và 2 chữ số thập phân; imageUrl ≤ 2048 ký tự; stockQuantity là số nguyên không âm; status là ACTIVE hoặc INACTIVE. Giới hạn độ dài được kiểm tra trước khi trim. 4\. Kiểm tra categoryId tồn tại. 5\. Trim tên và kiểm tra không trùng trong toàn bộ thực đơn (không phân biệt hoa thường). 6\. Tạo món ăn, dùng mặc định stockQuantity = 0 và status = ACTIVE nếu không gửi hoặc gửi null. 7\. Lưu món ăn thông qua Food Repository trong một giao dịch. 8\. Trả về món ăn vừa tạo dưới dạng JSON với mã 201 Created. |
 | **Nonfunctional Requirement** | 1\. Endpoint yêu cầu xác thực và phân quyền Admin. 2\. API tuân thủ REST và trả về JSON. 3\. Thao tác tạo phải bảo đảm tính toàn vẹn và tính nguyên tử của dữ liệu. 4\. Tầng nghiệp vụ không truy cập trực tiếp Database. |
 | **Error Handling** | 400 Bad Request (`VALIDATION_ERROR`): dữ liệu thiếu/sai định dạng, quá dài, price \<= 0, stockQuantity không phải số nguyên không âm hoặc status không hợp lệ. 401 Unauthorized: chưa đăng nhập hoặc token không hợp lệ/hết hạn. 403 Forbidden: người dùng không có quyền Admin. 404 Not Found (`CATEGORY_NOT_FOUND`): danh mục không tồn tại. 409 Conflict (`FOOD_NAME_CONFLICT`): tên món ăn bị trùng trong thực đơn. 500 Internal Server Error: lỗi hệ thống khi lưu món ăn. |
 
@@ -144,13 +154,13 @@ Sơ đồ kiến trúc và sequence: [architecture-single-restaurant.md](archite
 | **Requirement Name** | Cập nhật món ăn |
 | **Actor** | Admin |
 | **Requirement Description** | Cho phép Admin cập nhật thông tin món ăn. Hệ thống kiểm tra món ăn tồn tại, kiểm tra và thay thế dữ liệu bằng dữ liệu mới.  |
-| **Input** | foodId; body giống UC06: categoryId, name, price bắt buộc; description, imageUrl được thay thế (không gửi = xóa giá trị); stockQuantity, status tùy chọn (không gửi = giữ nguyên). |
+| **Input** | id; body giống UC06: categoryId, name, price bắt buộc; description, imageUrl được thay thế (không gửi = xóa giá trị); stockQuantity, status tùy chọn (không gửi hoặc null = giữ nguyên). |
 | **Preconditions** | Admin đã đăng nhập và có quyền quản lý món ăn. Món ăn cần thao tác phải tồn tại trong hệ thống (kể cả món INACTIVE).  |
-| **Functional Requirement** | 1\. Admin gửi yêu cầu qua PUT /api/foods/{foodId}. 2\. Hệ thống xác thực người dùng và kiểm tra quyền Admin qua Spring Security filter. 3\. Kiểm tra dữ liệu như UC06. 4\. Lấy món ăn hiện tại thông qua Food Repository và kiểm tra tồn tại. 5\. Kiểm tra categoryId tồn tại và tên (sau khi trim) không trùng với món khác (không phân biệt hoa thường). 6\. Thay thế categoryId, name, description, price, imageUrl; chỉ cập nhật stockQuantity/status khi có gửi. (Phase 2) Cập nhật tồn kho dùng cùng cơ chế chống tranh chấp với checkout để tránh ghi đè khi khách đang đặt món. 7\. Lưu thay đổi trong một giao dịch. 8\. Trả 200 với thông tin món ăn sau khi cập nhật dưới dạng JSON. |
+| **Functional Requirement** | 1\. Admin gửi yêu cầu qua PUT /api/foods/{id}. 2\. Hệ thống xác thực người dùng và kiểm tra quyền Admin qua Spring Security filter. 3\. Kiểm tra dữ liệu như UC06. 4\. Lấy món ăn hiện tại thông qua Food Repository và kiểm tra tồn tại. 5\. Kiểm tra categoryId tồn tại và tên (sau khi trim) không trùng với món khác (không phân biệt hoa thường). 6\. Thay thế categoryId, name, description, price, imageUrl; chỉ cập nhật stockQuantity/status khi giá trị khác null. (Phase 2) Cập nhật tồn kho dùng cùng cơ chế chống tranh chấp với checkout để tránh ghi đè khi khách đang đặt món. 7\. Lưu thay đổi trong một giao dịch. 8\. Trả 200 với thông tin món ăn sau khi cập nhật dưới dạng JSON. |
 | **Nonfunctional Requirement** | 1\. API sử dụng REST/JSON 2\. Chỉ Admin có quyền cập nhật món ăn 3\. Tầng nghiệp vụ không truy cập trực tiếp Database 4\. Dữ liệu được thao tác thông qua Repository/Data Access Layer. |
-| **Error Handling** | 401 nếu chưa đăng nhập; 400 (`VALIDATION_ERROR`) nếu foodId, giá, tồn kho hoặc dữ liệu cập nhật không hợp lệ; 404 (`FOOD_NOT_FOUND`/`CATEGORY_NOT_FOUND`) nếu món ăn hoặc danh mục không tồn tại; 403 nếu người dùng không có quyền Admin; 409 (`FOOD_NAME_CONFLICT`) nếu tên món trùng, hoặc (phase 2) có xung đột cập nhật đồng thời; 500 nếu lỗi truy xuất dữ liệu. |
+| **Error Handling** | 401 nếu chưa đăng nhập; 400 (`VALIDATION_ERROR`) nếu id, giá, tồn kho hoặc dữ liệu cập nhật không hợp lệ; 404 (`FOOD_NOT_FOUND`/`CATEGORY_NOT_FOUND`) nếu món ăn hoặc danh mục không tồn tại; 403 nếu người dùng không có quyền Admin; 409 (`FOOD_NAME_CONFLICT`) nếu tên món trùng; `CONFLICT` nếu vi phạm ràng buộc DB; `CONCURRENT_UPDATE` nếu deadlock/hết thời gian chờ khóa; 500 nếu lỗi truy xuất dữ liệu. |
 
-### **API:** PUT /api/foods/{foodId}
+### **API:** PUT /api/foods/{id}
 
 # **UC08 — Xoá món ăn**
 
@@ -159,13 +169,13 @@ Sơ đồ kiến trúc và sequence: [architecture-single-restaurant.md](archite
 | **Requirement Name** | Xoá món ăn |
 | **Actor** | Admin |
 | **Requirement Description** | Cho phép Admin ngừng bán món ăn khi món ăn không còn được cung cấp. Thao tác luôn là xóa mềm: món chuyển sang INACTIVE, không xóa vật lý, để đơn cũ giữ snapshot và hủy đơn vẫn hoàn kho được. |
-| **Input** | foodId |
+| **Input** | id |
 | **Preconditions** | Admin đã đăng nhập và có quyền quản lý món ăn. Món ăn cần thao tác phải tồn tại trong hệ thống.  |
-| **Functional Requirement** | 1\. Admin gửi yêu cầu qua DELETE /api/foods/{foodId}. 2\. Hệ thống xác thực người dùng và kiểm tra quyền Admin qua Spring Security filter. 3\. Lấy món ăn qua Food Repository và kiểm tra tồn tại. 4\. Chuyển trạng thái thành INACTIVE (gọi lại với món đã INACTIVE vẫn thành công). 5\. Lưu thay đổi trong giao dịch. 6\. Trả 204 No Content, không có body. |
+| **Functional Requirement** | 1\. Admin gửi yêu cầu qua DELETE /api/foods/{id}. 2\. Hệ thống xác thực người dùng và kiểm tra quyền Admin qua Spring Security filter. 3\. Lấy món ăn qua Food Repository và kiểm tra tồn tại. 4\. Chuyển trạng thái thành INACTIVE (gọi lại với món đã INACTIVE vẫn thành công). 5\. Lưu thay đổi trong giao dịch. 6\. Trả 204 No Content, không có body. |
 | **Nonfunctional Requirement** | 1\. Endpoint DELETE yêu cầu xác thực và phân quyền Admin 2\. Không xóa vật lý món ăn, nên không phá vỡ dữ liệu đơn hàng và giỏ hàng tham chiếu tới món 3\. Tầng nghiệp vụ không truy cập trực tiếp Database. |
-| **Error Handling** | 401 nếu chưa đăng nhập; 400 (`VALIDATION_ERROR`) nếu foodId không hợp lệ; 404 (`FOOD_NOT_FOUND`) nếu món ăn không tồn tại; 403 nếu người dùng không có quyền Admin; 500 nếu lỗi cập nhật trạng thái. |
+| **Error Handling** | 401 nếu chưa đăng nhập; 400 (`VALIDATION_ERROR`) nếu id không parse được thành int64; 404 (`FOOD_NOT_FOUND`) nếu món ăn không tồn tại (kể cả id ≤ 0); 403 nếu người dùng không có quyền Admin; 500 nếu lỗi cập nhật trạng thái. |
 
-### **API:** DELETE /api/foods/{foodId}
+### **API:** DELETE /api/foods/{id}
 
 # **UC09 — Xem giỏ hàng**
 
@@ -358,7 +368,7 @@ Ví dụ chuyển đơn DELIVERY từ PROCESSING sang SHIPPING:
 | **Requirement Description** | Cho phép nhân viên xem các đơn DINE_IN/DELIVERY cần xử lý ở PENDING, CONFIRMED, PROCESSING; đơn DELIVERY đang SHIPPING cũng được theo dõi tới hoàn thành. |
 | **Input** | employeeId từ JWT; status, orderType, page (mặc định 0), size (mặc định 20, tối đa 100) (tùy chọn). |
 | **Preconditions** | Nhân viên đã đăng nhập và có quyền xử lý đơn hàng. |
-| **Functional Requirement** | 1\. Nhân viên gửi yêu cầu qua GET /api/orders. 2\. Spring Security filter xác thực và kiểm tra quyền. 3\. Truy vấn các đơn cần xử lý qua Order Repository; nếu không gửi status thì mặc định PENDING, CONFIRMED, PROCESSING và SHIPPING. 4\. Lọc thêm theo status và orderType; tổ hợp DINE_IN + SHIPPING trả danh sách rỗng vì loại đơn này không có trạng thái đó. 5\. Sắp xếp mới nhất trước, phân trang và trả JSON cùng cấu trúc với UC14 (content, page, size, totalElements; mỗi đơn có orderType, số bàn hoặc thông tin giao hàng, paymentMethod, totalAmount, trạng thái và chi tiết món). 6\. Nhân viên có quyền xem GET /api/orders/{orderId} của mọi đơn. |
+| **Functional Requirement** | 1\. Nhân viên gửi yêu cầu qua GET /api/orders. 2\. Spring Security filter xác thực và kiểm tra quyền. 3\. Truy vấn các đơn cần xử lý qua Order Repository; nếu không gửi status thì mặc định PENDING, CONFIRMED, PROCESSING và SHIPPING. 4\. Khi truyền status, lọc đúng trạng thái đó, kể cả COMPLETED/CANCELLED; kết hợp orderType bằng AND; tổ hợp DINE_IN + SHIPPING trả danh sách rỗng vì loại đơn này không có trạng thái đó. 5\. Sắp xếp mới nhất trước, phân trang và trả JSON cùng cấu trúc với UC14 (content, page, size, totalElements; mỗi đơn có orderType, số bàn hoặc thông tin giao hàng, paymentMethod, totalAmount, trạng thái và chi tiết món). 6\. Nhân viên có quyền xem GET /api/orders/{orderId} của mọi đơn. |
 | **Nonfunctional Requirement** | Endpoint GET yêu cầu xác thực; truy cập Database thông qua Repository/Data Access Layer. |
 | **Error Handling** | 401 nếu chưa đăng nhập; 403 nếu không có quyền nhân viên; 400 (`VALIDATION_ERROR`) nếu status, orderType, page hoặc size không hợp lệ; trả danh sách rỗng nếu không có đơn cần xử lý; 500 nếu lỗi truy xuất dữ liệu. |
 
