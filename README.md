@@ -62,6 +62,81 @@ Sau khi nạp `seed.sql`, hệ thống có sẵn các tài khoản thử nghiệ
 
 ---
 
+## Cấu trúc dự án
+
+```text
+ByteMe/
+├── compose.yaml                      # Cấu hình Docker Compose (MySQL 8.4 + Spring Boot backend)
+├── Dockerfile                        # Multi-stage build (Temurin 21 JDK -> JRE runtime, UID 10001)
+├── pom.xml                           # Quản lý dependencies (Spring Boot 3.5.16, JPA, Security, ArchUnit...)
+├── docs/                             # Tài liệu phân tích và thiết kế hệ thống
+│   ├── Project KTPM.md               # Đặc tả chi tiết 18 Use Cases (UC01–UC18) & quy tắc nghiệp vụ
+│   ├── architecture-single-restaurant.md # Thiết kế kiến trúc, sequence checkout & hủy đơn
+│   ├── database-design.md            # Thiết kế CSDL (schema, quan hệ, khóa ngoại, chỉ mục)
+│   └── security-report.md            # Báo cáo đánh giá bảo mật (ZAP scan, kiểm tra BOLA)
+├── kaggle/                           # Kịch bản & kết quả kiểm thử tải (Load Testing) trên Kaggle
+│   ├── dataset/                      # Schema DDL và dữ liệu seed mẫu cho môi trường đo tải
+│   ├── script/                       # Notebook k6 benchmark (byteme_kaggle_benchmark.ipynb)
+│   └── results/phase1-baseline/      # Báo cáo đo tải baseline phase 1 (biểu đồ latency, RPS, k6-summary)
+├── scripts/                          # Scripts tiện ích phục vụ phát triển và kiểm thử
+│   ├── generate-keys.py              # Sinh cặp khóa RSA (RS256) vào .local/ phục vụ ký JWT
+│   ├── prepare-docker-keys.py        # Chuẩn bị bản sao khóa phân quyền cho container Docker
+│   ├── issue-local-tokens.sh         # Sinh token JWT fixture để kiểm thử phân quyền local
+│   └── test-endpoints.py             # Kịch bản kiểm thử tự động toàn bộ 18 API endpoint
+├── zap/                              # Kết quả kiểm thử bảo mật tự động bằng OWASP ZAP
+│   ├── be-anonymous/                 # Quét API công khai
+│   ├── be-authenticated/             # Quét API sau đăng nhập (CUSTOMER, EMPLOYEE, ADMIN)
+│   └── bola-ownership/               # Kiểm tra quyền sở hữu và truy cập chéo tài nguyên (BOLA)
+└── src/
+    ├── main/
+    │   ├── java/org/example/
+    │   │   ├── Application.java      # Entry point khởi chạy ứng dụng Spring Boot
+    │   │   ├── auth/                 # Module Xác thực: đăng ký, đăng nhập, cấp JWT (UC01–UC02)
+    │   │   │   ├── controller/       # AuthController, xử lý lỗi AuthErrors, AuthJsonAdvice
+    │   │   │   ├── dto/              # Request/Response DTO cho đăng ký, đăng nhập, token
+    │   │   │   ├── entity/           # Entity User, enum AccountStatus
+    │   │   │   ├── repository/       # AccountRepository, UserRepository (JPA)
+    │   │   │   └── service/          # RegisterService, LoginService, AuthValidation
+    │   │   ├── food/                 # Module Thực đơn: xem, tìm kiếm, CRUD món ăn (UC03–UC08)
+    │   │   │   ├── controller/       # FoodController
+    │   │   │   ├── dto/              # FoodDto, FoodRequest
+    │   │   │   ├── entity/           # Food, Category
+    │   │   │   ├── repository/       # FoodRepository, CategoryRepository
+    │   │   │   └── service/          # FoodService (quản lý món, kiểm tra & cập nhật tồn kho)
+    │   │   ├── cart/                 # Module Giỏ hàng: quản lý dòng giỏ của khách (UC09–UC12)
+    │   │   │   ├── controller/       # CartController
+    │   │   │   ├── dto/              # CartDto, CartItemDto, AddToCartRequest...
+    │   │   │   ├── entity/           # Cart, CartItem
+    │   │   │   ├── repository/       # CartRepository (JPA)
+    │   │   │   └── service/          # CartService (thêm, sửa, xóa, làm rỗng giỏ)
+    │   │   ├── order/                # Module Đơn hàng: đặt đơn, cập nhật, hủy đơn (UC13–UC18)
+    │   │   │   ├── controller/       # OrderController
+    │   │   │   ├── domain/           # Enums nghiệp vụ: OrderStatus, OrderType, PaymentMethod
+    │   │   │   ├── dto/              # CreateOrderRequest, OrderDto, OrderItemDto, StatusRequest...
+    │   │   │   ├── entity/           # Order, OrderItem (chứa snapshot giá & tên món tại thời điểm đặt)
+    │   │   │   ├── repository/       # OrderRepository
+    │   │   │   └── service/          # OrderService (checkout trong 1 transaction, đổi trạng thái, hủy đơn)
+    │   │   ├── common/               # Dùng chung: BusinessException, CurrentUser, ApiError, GlobalErrors
+    │   │   ├── config/               # Cấu hình bảo mật: SecurityConfiguration (phân quyền vai trò)
+    │   │   ├── platform/             # Hạ tầng kỹ thuật: BCryptHasher, LocalRsaTokenIssuer, LoginRateLimiter
+    │   │   └── shared/api/           # Model giao tiếp liên module: AuthenticatedUser, Role
+    │   └── resources/
+    │       ├── application.yml       # Cấu hình Spring Boot (JPA, Jackson, Hikari, Timezone UTC...)
+    │       ├── db/
+    │       │   ├── schema.sql        # Định nghĩa 7 bảng CSDL MySQL và ràng buộc toàn vẹn
+    │       │   └── seed.sql          # Dữ liệu mẫu (tài khoản demo, danh mục, món ăn ban đầu)
+    │       └── static/
+    │           └── openapi.yaml      # Đặc tả API OpenAPI 3.0 viết tay chuẩn hóa cho 18 use case
+    └── test/java/org/example/
+        ├── ArchitectureTest.java     # Kiểm tra tự động các quy tắc kiến trúc Clean Architecture (ArchUnit)
+        ├── FoodServiceTest.java      # Unit test nghiệp vụ món ăn
+        ├── OrderWebTest.java         # Test API đặt hàng và bảo mật MockMvc
+        ├── DatabaseDesignTests.java  # Test tích hợp CSDL qua Testcontainers (MySQL thật)
+        └── dev/LocalTokenCli.java    # CLI thử nghiệm tạo token fixture phục vụ phát triển
+```
+
+---
+
 ## Kiến trúc
 
 Modular monolith gồm 4 module: `auth`, `food`, `cart`, `order`. Mọi module dùng cùng một kiểu phân tầng:
