@@ -376,3 +376,26 @@ Kịch bản tự động kiểm tra đăng ký, đăng nhập, duyệt menu, gi
 ### 6.4. Đánh giá bảo mật 
 - Hệ thóng được đnáh giá bằng OWASP ZAP 
 - Kết quả không ghi nhận sai lệch phân quyền hay lộ lọt dữ liệu chéo người dùng: xem [docs/security-report.md](docs/security-report.md).
+
+### 6.5. Kết quả kiểm thử tải trên Kaggle (Phase 1 — baseline)
+
+Đợt kiểm thử ngày **26/10/2026** chạy bằng **k6 trên Kaggle CPU (4 vCPU, 30 GB RAM)**, với MySQL 8 và ứng dụng trên cùng máy. Tải tăng theo các giai đoạn: **30 giây lên 50 VUs → 1 phút lên 200 VUs → 1 phút lên 500 VUs → 30 giây về 0**.
+
+Mỗi vòng lặp kiểm tra `GET /api/foods`, `GET /api/foods/search`, `GET /api/cart` (có token) và `POST /api/auth/token`.
+
+| Chỉ số | Kết quả |
+| :--- | :--- |
+| Tổng số request | 18.029 |
+| Tỷ lệ request lỗi | 0% |
+| Checks đạt | 100% (18.028/18.028) |
+| Throughput trung bình | Khoảng 99,48 request/giây |
+| Độ trễ trung bình | 2,2 giây |
+| P95 | 8,55 giây — không đạt ngưỡng < 500 ms |
+| P99 | 10,02 giây — không đạt ngưỡng < 1.200 ms |
+| Độ trễ lớn nhất | 11,85 giây |
+
+![Biểu đồ độ trễ phản hồi API và throughput trong kiểm thử tải Kaggle Phase 1](kaggle/results/phase1-baseline/load_test_report.png)
+
+Biểu đồ cho thấy độ trễ tăng rõ rệt khi tải tăng, trong khi throughput không tăng tương ứng. Các request không ghi nhận lỗi HTTP, nhưng **chưa đạt ngưỡng độ trễ P95 và P99**. Đây là kết quả baseline trước cải tiến để đối chiếu với Phase 2; chưa đủ dữ liệu để kết luận nút thắt cụ thể phía server.
+
+Xem [báo cáo baseline](kaggle/results/phase1-baseline/README.md), [kết quả k6](kaggle/results/phase1-baseline/k6-summary.txt) và [hướng dẫn chạy notebook](kaggle/script/README.md). Kết quả trên thuộc bản build từ commit `ed8be73`, không phải lần chạy kiểm thử mới trên code hiện tại.
