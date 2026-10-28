@@ -180,21 +180,21 @@ HTTP / JSON Request
 [ CSDL MySQL 8.4 InnoDB ]
 ```
 
-**Quy tắc thiết kế kiến trúc (được kiểm tra tự động qua `ArchitectureTest` bằng ArchUnit):**
+**Thiết kế kiến trúc:**
 1. **Tầng Service độc lập:** Không phụ thuộc `org.springframework.web`, `jakarta.servlet` hay `jakarta.persistence`, `org.hibernate`, `java.sql`. Ngoại lệ nghiệp vụ ném qua `BusinessException` và được chuyển đổi tự động bởi `GlobalErrors`.
 2. **Đóng gói ORM:** Tầng Service không gọi các phương thức quản lý flush của JPA; các thao tác đồng bộ CSDL được đóng gói trong Repository (ví dụ `CartRepository.saveChanges()`).
-3. **Giao tiếp liên module chuẩn mực:** Các module `food`, `cart`, `order` chỉ tương tác với nhau thông qua **Service** và **DTO** công khai, tuyệt đối không truy cập trực tiếp Entity hoặc Repository của module khác:
+3. **Giao tiếp liên module chuẩn mực:** Các module `food`, `cart`, `order` chỉ tương tác với nhau thông qua Service và DTO công khai, tuyệt đối không truy cập trực tiếp Entity hoặc Repository của module khác:
    - Cart gọi `FoodService` để kiểm tra món còn bán và lấy thông tin hiển thị.
    - Order gọi `CartService` để lấy món checkout / dọn giỏ và gọi `FoodService` để trừ kho / hoàn kho.
 
-### 4.3. Danh mục tài liệu chi tiết (Detailed Project Documentation)
+### 4.3. Docs
 
-Dự án cung cấp hệ thống tài liệu kỹ thuật chi tiết tại thư mục `docs/`, `kaggle/`, `src/main/resources/static/` phục vụ việc tra cứu kiến trúc, CSDL và kiểm thử:
+Xem ở `docs/`, `kaggle/`, `src/main/resources/static/` 
 
 | Tài liệu | Đường dẫn | Nội dung và phạm vi |
 | :--- | :--- | :--- |
 | **Kiến trúc hệ thống** | [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md) | Sơ đồ phân tầng Modular Monolith, ranh giới 4 module, Sequence diagram tạo đơn (UC13) và hủy đơn (UC15/UC17), quy tắc `@Transactional` và vòng đời trạng thái đơn hàng |
-| **Thiết kế CSDL** | [docs/database-design.md](docs/database-design.md) | Chi tiết lược đồ 7 bảng (`users`, `categories`, `foods`, `carts`, `cart_items`, `orders`, `order_items`), ràng buộc `CHECK`, chính sách khóa ngoại `RESTRICT`/`CASCADE`, chiến lược snapshot giá và múi giờ UTC |
+| **Thiết kế CSDL** | [docs/database-design.md](docs/database-design.md) | Chi tiết DB |
 | **Đặc tả Use Cases** | [docs/Project KTPM.md](<docs/Project KTPM.md>) | Phân tích yêu cầu chi tiết 18 Use Cases (UC01–UC18), mô tả actors, điều kiện tiên quyết, luồng xử lý và quy tắc nghiệp vụ theo hình thức `DINE_IN` / `DELIVERY` |
 | **Báo cáo An toàn thông tin** | [docs/security-report.md](docs/security-report.md) | Báo cáo kiểm thử bảo mật backend bằng OWASP ZAP (Anonymous, Authenticated) và kiểm thử đối soát 72 tổ hợp vai trò × API chống lỗi BOLA (Broken Object Level Authorization) |
 | **Hợp đồng API (OpenAPI 3.0)** | [src/main/resources/static/openapi.yaml](src/main/resources/static/openapi.yaml) | Bản đặc tả OpenAPI 3.0 viết tay chuẩn hóa khớp 100% với Controller/DTO/Service, làm nguồn dữ liệu cho Swagger UI |
@@ -396,6 +396,6 @@ Kịch bản tự động kiểm tra đăng ký, đăng nhập, duyệt menu, gi
 - Kịch bản k6 đa tầng tải (50 VUs → 200 VUs → 500 VUs) được thực thi trên hạ tầng Kaggle CPU.
 - Chi tiết cấu hình, biểu đồ độ trễ và báo cáo tóm tắt baseline: xem [kaggle/results/phase1-baseline/README.md](kaggle/results/phase1-baseline/README.md).
 
-### 6.4. Đánh giá bảo mật (OWASP ZAP & BOLA Test)
-- Hệ thống đã trải qua 2 đợt quét chủ động/bị động bằng OWASP ZAP (Anonymous và Authenticated) cùng đợt kiểm thử trực tiếp 72 tổ hợp vai trò × API chống lỗi Broken Object Level Authorization (BOLA).
+### 6.4. Đánh giá bảo mật 
+- Hệ thóng được đnáh giá bằng OWASP ZAP 
 - Kết quả không ghi nhận sai lệch phân quyền hay lộ lọt dữ liệu chéo người dùng: xem [docs/security-report.md](docs/security-report.md).
