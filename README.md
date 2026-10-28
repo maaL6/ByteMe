@@ -1,6 +1,4 @@
-# ByteMe — Hệ thống Đặt đồ ăn (Restaurant Ordering Backend)
-
-Hệ thống backend RESTful JSON hoàn chỉnh cho một nhà hàng, cung cấp quy trình đặt món khép kín từ xác thực người dùng, duyệt thực đơn, quản lý giỏ hàng đến tạo đơn ăn tại chỗ (`DINE_IN`) hoặc giao hàng tận nơi (`DELIVERY`), cùng quy trình xử lý đơn hàng của nhân viên và quản lý thực đơn của quản trị viên.
+# ByteMe — Restaurant Ordering Backend
 
 - **Swagger UI**: http://localhost:8080/swagger-ui/index.html
 - **Đặc tả OpenAPI 3.0**: http://localhost:8080/openapi.yaml
@@ -11,48 +9,43 @@ Hệ thống backend RESTful JSON hoàn chỉnh cho một nhà hàng, cung cấp
 ## 1. Bài toán và phạm vi
 
 ### 1.1. Bối cảnh bài toán
-Dự án giải quyết bài toán đặt món và quản lý vận hành cho **một nhà hàng duy nhất** (Single-Restaurant Monolith):
-- Không áp dụng mô hình chuỗi hay sàn giao dịch nhiều nhà hàng (không sử dụng `restaurantId` hay bảng `restaurants`).
+Dự án giải quyết bài toán đặt món và quản lý vận hành cho một nhà hàng:
 - Phục vụ đồng thời 2 hình thức đặt món:
   - **Ăn tại chỗ (`DINE_IN`)**: Khách gọi món tại bàn, bắt buộc có thông tin số bàn (`tableNumber`), thanh toán tiền mặt (`CASH`) hoặc chuyển khoản (`BANK_TRANSFER`).
   - **Giao hàng tận nơi (`DELIVERY`)**: Khách đặt món giao về nhà, bắt buộc có tên, số điện thoại, địa chỉ nhận hàng, thanh toán khi nhận hàng (`COD`) hoặc chuyển khoản (`BANK_TRANSFER`).
 
-### 1.2. Đối tượng sử dụng và vai trò (Roles)
-Hệ thống xác thực và phân quyền nghiêm ngặt theo 3 vai trò độc lập (các role không kế thừa quyền của nhau):
+### 1.2. Các đối tượng sử dụng
+Hệ thống phân chia theo 3 vai trò độc lập:
 - **Khách hàng (`CUSTOMER`)**: Đăng ký, đăng nhập, xem thực đơn, tìm kiếm món, quản lý giỏ hàng cá nhân, đặt đơn, xem danh sách đơn hàng của mình và hủy đơn khi đang chờ tiếp nhận (`PENDING`).
 - **Nhân viên (`EMPLOYEE`)**: Xem danh sách đơn cần xử lý (lọc theo trạng thái/hình thức), xác nhận đơn (`PENDING → CONFIRMED`), cập nhật tiến độ chế biến (`PROCESSING`), giao hàng (`SHIPPING`), hoàn thành đơn (`COMPLETED`) hoặc hủy đơn (`CANCELLED`).
-- **Quản trị viên (`ADMIN`)**: Quản lý toàn bộ danh mục thực đơn và món ăn (thêm mới, cập nhật giá bán, tồn kho, ngừng kinh doanh món). Không tham gia vào giỏ hàng và đơn hàng.
-
-### 1.3. Phạm vi triển khai
-- **Phase 1 (Baseline - Hiện tại)**: Tập trung hoàn thiện đầy đủ 18 Use Cases nghiệp vụ (UC01–UC18), kiểm soát phân quyền chặt chẽ (RBAC, chống BOLA), ranh giới transaction ACID chuẩn và kiểm thử tải đo lường mốc chuẩn (baseline).
-- **Giới hạn phạm vi**: Chưa hỗ trợ đặt bàn trước, chưa tích hợp cổng thanh toán trực tuyến bên thứ ba (VNPay/Momo), chưa có chế độ khách vãng lai (bắt buộc đăng nhập để đặt món).
+- **Quản trị viên (`ADMIN`)**: Quản lý toàn bộ danh mục thực đơn và món ăn (thêm mới, cập nhật giá bán, tồn kho, ngừng kinh doanh món). 
 
 ---
 
 ## 2. Nghiệp vụ chính
 
 ### 2.1. Quản lý Tài khoản & Xác thực (Auth — UC01, UC02)
-- **Đăng ký tài khoản (`POST /api/auth/register`)**: Tiếp nhận `fullName`, `email`, `phone`, `password`, `confirmPassword`. Kiểm tra trùng lặp email/SĐT, mã hóa mật khẩu bằng **BCrypt** (giới hạn 8–72 ký tự UTF-8 để chống tấn công DoS thuật toán băm), tự động kích hoạt tài khoản vai trò `CUSTOMER`.
-- **Đăng nhập & Cấp token (`POST /api/auth/token`)**: Xác thực thông tin đăng nhập, cấp token **JWT bất đối xứng (RS256)** với thời hạn sống (TTL) 5.400 giây (90 phút).
+- **Đăng ký tài khoản (`POST /api/auth/register`)**: Tiếp nhận `fullName`, `email`, `phone`, `password`, `confirmPassword`. Kiểm tra trùng lặp email/SĐT, mã hóa mật khẩu bằng BCrypt, tự động kích hoạt tài khoản vai trò `CUSTOMER`.
+- **Đăng nhập & Cấp token (`POST /api/auth/token`)**: Xác thực thông tin đăng nhập, cấp JWT token với TTL 5.400 giây (90 phút).
 - **Chống Brute-force**: Tích hợp cơ chế Rate Limiting in-memory tại tầng Filter: giới hạn tối đa 10 lần đăng nhập thất bại/email và 100 lần/IP trong cửa sổ 900 giây (15 phút).
 
 ### 2.2. Quản lý Thực đơn (Food — UC03 đến UC08)
 - **Tra cứu công khai**: Khách hàng và người dùng chưa đăng nhập có thể xem danh mục, duyệt danh sách món ăn đang bán (`GET /api/foods`), xem chi tiết món (`GET /api/foods/{id}`) và tìm kiếm theo từ khóa kèm bộ lọc danh mục (`GET /api/foods/search?q=&categoryId=`).
-- **Quản trị món ăn (Admin)**: Thêm món mới (`POST /api/foods`), sửa thông tin/giá bán/tồn kho (`PUT /api/foods/{id}`). Thao tác xóa món (`DELETE /api/foods/{id}`) áp dụng **Soft Delete** (chuyển trạng thái sang `INACTIVE` / ngừng bán), tuyệt đối không xóa cứng để bảo đảm tính toàn vẹn dữ liệu và lịch sử đơn hàng. Giá tiền luôn dùng kiểu số nguyên/thập phân chính xác `DECIMAL(15,2)`, không dùng số thực `float`/`double`.
+- **Quản trị món ăn (Admin)**: Thêm món mới (`POST /api/foods`), sửa thông tin/giá bán/tồn kho (`PUT /api/foods/{id}`). Thao tác xóa món (`DELETE /api/foods/{id}`) áp dụng Soft Delete (chuyển trạng thái sang `INACTIVE` / ngừng bán). Giá tiền dùng kiểu số nguyên/thập phân chính xác `DECIMAL(15,2)`, không dùng số thực `float`/`double`.
 
 ### 2.3. Quản lý Giỏ hàng (Cart — UC09 đến UC12)
 - Giỏ hàng định danh 1-1 theo `userId` của khách hàng (`CUSTOMER`).
-- **Khởi tạo lười (Lazy Creation)**: `GET /api/cart` khi khách chưa từng thêm món sẽ trả về giỏ rỗng `{ id: null, items: [] }` mà không tạo bản ghi rác trong CSDL. Bản ghi giỏ hàng chỉ được tạo tại lần thêm món đầu tiên (`POST /api/cart/items`).
+- Lazy Creation: `GET /api/cart` khi khách chưa từng thêm món sẽ trả về giỏ rỗng `{ id: null, items: [] }` mà không tạo bản ghi rác trong CSDL. Bản ghi giỏ hàng chỉ được tạo tại lần thêm món đầu tiên (`POST /api/cart/items`).
 - Hỗ trợ cập nhật số lượng món (`PUT /api/cart/items/{cartItemId}`) hoặc xóa món khỏi giỏ (`DELETE /api/cart/items/{cartItemId}`).
 
 ### 2.4. Quy trình Tạo đơn hàng đồng bộ (Order Checkout — UC13)
-Toàn bộ thao tác checkout (`POST /api/orders`) diễn ra trong **một Database Transaction đồng bộ duy nhất** theo các bước:
+Toàn bộ thao tác checkout (`POST /api/orders`) diễn ra trong một Database Transaction đồng bộ duy nhất theo các bước:
 1. Đọc giỏ hàng của khách; nếu chưa có giỏ hoặc giỏ rỗng, lập tức từ chối với lỗi `400 EMPTY_CART`.
 2. Duyệt qua từng món theo thứ tự: kiểm tra món còn mở bán (`ACTIVE`) và còn đủ tồn kho (`stock >= qty`), thực hiện trừ tồn kho ngay lập tức (`stock = stock - qty`).
 3. Tạo đơn hàng mới ở trạng thái `PENDING`.
-4. Ghi nhận **Snapshot bất biến** của từng món ăn tại thời điểm mua (lưu cố định `food_name`, `unit_price`, `quantity` vào bảng `order_items`). Mọi thay đổi giá hoặc tên món của Admin sau này không ảnh hưởng đến đơn đã đặt. Tổng tiền đơn được tính tự động từ snapshot phía server; client không tự gửi giá hay danh sách món.
+4. Ghi nhận Snapshot bất biến của từng món ăn tại thời điểm mua (lưu cố định `food_name`, `unit_price`, `quantity` vào bảng `order_items`). Mọi thay đổi giá hoặc tên món của Admin sau này không ảnh hưởng đến đơn đã đặt. Tổng tiền đơn được tính tự động từ snapshot phía server; client không tự gửi giá hay danh sách món.
 5. Làm sạch giỏ hàng (`DELETE cart_items`).
-6. Nếu xảy ra bất kỳ lỗi nào (hết hàng, ngừng bán, lỗi hệ thống), toàn bộ giao dịch tự động **rollback 100%**.
+6. Nếu xảy ra bất kỳ lỗi nào (hết hàng, ngừng bán, lỗi hệ thống), toàn bộ giao dịch tự động rollback.
 
 ### 2.5. Vòng đời Trạng thái & Hủy đơn Hoàn kho (UC14 đến UC18)
 ```
@@ -71,15 +64,15 @@ Toàn bộ thao tác checkout (`POST /api/orders`) diễn ra trong **một Datab
 - **Cơ chế Hủy đơn & Hoàn kho**:
   - Khách hàng chỉ được hủy đơn của chính mình khi đơn đang ở trạng thái `PENDING`.
   - Nhân viên có quyền hủy đơn khi đơn ở các trạng thái `PENDING`, `CONFIRMED` hoặc `PROCESSING`.
-  - Khi đơn chuyển sang `CANCELLED`, hệ thống tự động **hoàn trả tồn kho** (`stock = stock + qty`) cho từng món trong đơn ngay trong cùng transaction hủy (áp dụng cả với món đã ngừng bán). Đơn đã hủy không thể phục hồi hoặc hủy lại lần hai.
+  - Khi đơn chuyển sang `CANCELLED`, hệ thống tự động hoàn trả tồn kho (`stock = stock + qty`) cho từng món trong đơn ngay trong cùng transaction hủy (áp dụng cả với món đã ngừng bán). Đơn đã hủy không thể phục hồi hoặc hủy lại lần hai.
 
 ---
 
 ## 3. Các vấn đề cần xử lý và yêu cầu kỹ thuật
 
-### 3.1. Các vấn đề kỹ thuật cần xử lý (Phase 1 Baseline & Định hướng Phase 2)
+### 3.1. Một số vấn đề kỹ thuật cần xử lý
 - **Kiểm soát Tranh chấp Đồng thời (Concurrency):**
-  - *Hiện trạng Phase 1*: Theo yêu cầu triển khai baseline cơ bản, hệ thống chưa dùng khóa bi quan (`SELECT ... FOR UPDATE`) hay khóa lạc quan (`@Version`). Do đó, hai checkout đồng thời có thể gặp hiện tượng *Lost Update* (cùng đọc tồn kho $S$ và cùng trừ kho, bán vượt tồn kho) dù `stock_quantity` không bị âm nhờ kiểm tra `stock >= qty`.
+  - *Hiện trạng Phase 1*: Theo yêu cầu triển khai baseline cơ bản, hệ thống chưa dùng khóa bi quan (`SELECT ... FOR UPDATE`) hay khóa lạc quan (`@Version`). Do đó, hai checkout đồng thời có thể gặp hiện tượng Lost Update (cùng đọc tồn kho $S$ và cùng trừ kho, bán vượt tồn kho) dù `stock_quantity` không bị âm nhờ kiểm tra `stock >= qty`.
   - *Deadlock InnoDB*: Khi checkout, câu lệnh chèn vào `order_items` giữ Shared Lock (S-lock) trên bảng `foods` do ràng buộc Foreign Key, sau đó thao tác `UPDATE foods` trừ kho lại yêu cầu Exclusive Lock (X-lock). Khi nhiều luồng cùng checkout các món giống nhau, InnoDB sẽ phát hiện deadlock và rollback một nhánh. Hệ thống đã xử lý bắt ngoại lệ này và trả về HTTP `409 CONCURRENT_UPDATE` để client gửi lại request.
   - *Định hướng Phase 2*: Triển khai khóa bi quan hoặc khóa lạc quan cho quá trình trừ kho và hoàn kho để ngăn chặn triệt để bán vượt kho và hủy trùng lặp.
 - **Nút thắt hiệu năng (Từ báo cáo đo tải Kaggle k6):**
