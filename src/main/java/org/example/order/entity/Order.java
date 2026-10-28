@@ -70,6 +70,7 @@ public class Order {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    // Save items with their order.
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @OrderBy("id")
     @Builder.Default

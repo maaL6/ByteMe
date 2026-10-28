@@ -17,6 +17,7 @@ public record OrderDto(Long id, Long userId, OrderType orderType, OrderStatus st
 
     public static OrderDto fromEntity(Order order) {
         List<OrderItemDto> items = order.getItems().stream().map(OrderItemDto::fromEntity).toList();
+        // Sum item totals using snapshot prices.
         BigDecimal total = items.stream().map(OrderItemDto::lineTotal).reduce(new BigDecimal("0.00"), BigDecimal::add);
         return new OrderDto(order.getId(), order.getUserId(), order.getOrderType(), order.getStatus(),
                 order.getTableNumber(), order.getRecipientName(), order.getShippingPhone(), order.getShippingAddress(),

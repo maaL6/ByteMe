@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
+    // Null owner or type disables that filter.
     String FILTER = """
             from Order o
             where (:userId is null or o.userId = :userId)

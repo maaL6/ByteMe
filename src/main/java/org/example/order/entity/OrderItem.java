@@ -24,6 +24,7 @@ public class OrderItem {
     @Column(name = "food_id", nullable = false)
     private Long foodId;
 
+    // Name and price at checkout.
     @Column(name = "food_name", nullable = false, length = 150)
     private String foodName;
 

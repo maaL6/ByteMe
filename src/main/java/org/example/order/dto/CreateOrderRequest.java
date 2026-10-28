@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import org.example.order.domain.OrderType;
 import org.example.order.domain.PaymentMethod;
 
+// Items come from the customer's cart.
 public record CreateOrderRequest(
         @NotNull(message = "orderType là bắt buộc")
         OrderType orderType,

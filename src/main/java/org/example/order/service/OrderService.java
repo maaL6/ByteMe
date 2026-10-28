@@ -24,6 +24,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+    // Default queue excludes finished orders.
     private static final List<OrderStatus> EMPLOYEE_QUEUE =
             List.of(OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.SHIPPING);
 
@@ -32,6 +33,7 @@ public class OrderService {
     private final FoodService foodService;
     private final Clock clock;
 
+    // Checkout runs atomically.
     @Transactional
     public OrderDto create(long customerId, CreateOrderRequest request) {
         CreateOrderRequest input = applyOrderTypeRules(request);
@@ -52,6 +54,7 @@ public class OrderService {
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
+        // Reserve stock and snapshot each item.
         cart.forEach((foodId, quantity) -> {
             FoodDto food = foodService.reserveStock(foodId, quantity);
             order.getItems().add(OrderItem.builder()
@@ -63,12 +66,14 @@ public class OrderService {
                     .build());
         });
         Order saved = orders.save(order);
+        // Clear the cart after saving.
         cartService.clearCart(customerId);
         return OrderDto.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
     public OrderPage list(long userId, Role role, OrderStatus status, OrderType type, int page, int size) {
+        // Check page bounds and prevent offset overflow.
         if (page < 0 || size < 1 || size > 100 || page > Integer.MAX_VALUE / size) {
             throw BusinessException.invalid("VALIDATION_ERROR", "page >= 0; size từ 1 đến 100.");
         }
@@ -76,6 +81,7 @@ public class OrderService {
         if (status != null) statuses = List.of(status);
         else if (role == Role.EMPLOYEE) statuses = EMPLOYEE_QUEUE;
         else statuses = List.of(OrderStatus.values());
+        // Customers only see their own orders.
         Long ownerId = role == Role.CUSTOMER ? userId : null;
 
         List<OrderDto> content = orders.findPage(ownerId, statuses, type, page, size).stream()
@@ -94,6 +100,7 @@ public class OrderService {
     public OrderDto cancel(long customerId, long orderId) {
         Order order = orders.findById(orderId).orElseThrow(OrderService::orderNotFound);
         requireOwner(order, customerId);
+        // Customers can cancel pending orders only.
         if (order.getStatus() != OrderStatus.PENDING) throw invalidTransition();
         return OrderDto.fromEntity(moveTo(order, OrderStatus.CANCELLED, customerId));
     }
@@ -112,6 +119,7 @@ public class OrderService {
         return OrderDto.fromEntity(moveTo(order, next, employeeId));
     }
 
+    // Allowed transitions depend on order type.
     private static boolean canMove(Order order, OrderStatus next) {
         return switch (order.getStatus()) {
             case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
@@ -127,19 +135,23 @@ public class OrderService {
     private Order moveTo(Order order, OrderStatus next, long actorId) {
         Instant now = now();
         if (next == OrderStatus.CANCELLED) {
+            // Restore reserved stock.
             order.getItems().forEach(item -> foodService.releaseStock(item.getFoodId(), item.getQuantity()));
             order.setCancelledAt(now);
         }
         if (next == OrderStatus.CONFIRMED) {
+            // Record who confirmed and when.
             order.setConfirmedBy(actorId);
             order.setConfirmedAt(now);
         }
         if (next == OrderStatus.COMPLETED) order.setCompletedAt(now);
+        // JPA persists changes at commit.
         order.setStatus(next);
         order.setUpdatedAt(now);
         return order;
     }
 
+    // Validate fields for each order type.
     private static CreateOrderRequest applyOrderTypeRules(CreateOrderRequest input) {
         String note = trimToNull(input.note());
         if (input.orderType() == OrderType.DINE_IN) {
@@ -162,6 +174,7 @@ public class OrderService {
         return result;
     }
 
+    // Treat blank text as missing.
     private static String trimToNull(String value) {
         String result = value == null ? null : value.trim();
         return result == null || result.isEmpty() ? null : result;

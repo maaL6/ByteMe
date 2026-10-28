@@ -29,7 +29,9 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderDto> create(@AuthenticationPrincipal AuthenticatedUser user,
             @Valid @RequestBody CreateOrderRequest request) {
+        // Use the authenticated customer's ID.
         OrderDto order = orderService.create(CurrentUser.id(user), request);
+        // Return the new order's location.
         return ResponseEntity.created(URI.create("/api/orders/" + order.id()))
                 .cacheControl(CacheControl.noStore()).body(order);
     }
