@@ -1,10 +1,6 @@
-# ByteMe — Kiến trúc và checkout cho một nhà hàng
-
-Tài liệu mô tả kiến trúc **đúng với code phase 1 hiện tại** cho một nhà hàng, gồm ăn tại chỗ (`DINE_IN`) và giao về nhà (`DELIVERY`). [Use case UC01–UC18](Project%20KTPM.md) xác định yêu cầu nghiệp vụ; [thiết kế database](database-design.md) xác định bảng và ràng buộc; [README](../README.md) tóm tắt kiến trúc và API.
+# ByteMe
 
 ## Phân tầng chung
-
-Mọi module dùng cùng một kiểu phân tầng; quy tắc được `src/test/java/org/example/ArchitectureTest.java` (ArchUnit) kiểm tra tự động.
 
 | Tầng | Package | Trách nhiệm | Được phép phụ thuộc |
 | --- | --- | --- | --- |
@@ -73,8 +69,6 @@ flowchart TB
     OrderRepo --> DB
 ```
 
-Mũi tên giữa các service là lời gọi Java trực tiếp. Các method được gọi đều là `@Transactional` với propagation mặc định (`REQUIRED`), nên khi `OrderService` gọi `CartService`/`FoodService` thì tất cả tham gia **cùng một transaction**: commit cùng nhau hoặc rollback cùng nhau.
-
 Ranh giới giữa module:
 
 - `CartItem` chỉ lưu `foodId`; Cart lấy thông tin món để hiển thị qua `FoodService.findByIds` và kiểm tra món còn bán qua `FoodService.getAvailableFood`.
@@ -142,9 +136,7 @@ Giá và tổng tiền do server tính từ dữ liệu món đọc trong transa
 
 Giỏ được tạo ở lần thêm món đầu tiên (`addToCart`). `GET /api/cart` khi chưa có giỏ trả `200` với `id: null`, `items: []` và không ghi gì vào database. Sửa/xóa dòng giỏ khi chưa có giỏ trả `404 CART_ITEM_NOT_FOUND`.
 
-### Giới hạn phase 1
-
-Theo đề bài phase 1 ("chỉ triển khai chức năng cơ bản, không cần tối ưu"), code hiện tại **không** dùng khóa hàng (`SELECT … FOR UPDATE`) hay khóa lạc quan (`@Version`), Hệ quả khi chạy đồng thời:
+Pháe 1 hiện tại có một số hạn chế:
 
 - Checkout đồng thời có thể bán vượt kho (lost update): hai transaction cùng đọc một giá trị tồn kho, cùng kiểm tra đủ kho rồi cùng ghi `stock - quantity`, nên tổng số đã bán vượt tồn kho; `stock_quantity` không bị âm vì service chỉ ghi khi tồn kho đọc được ≥ số lượng. Hai checkout cùng một giỏ không được tuần tự hóa: request sau có thể tạo đơn thứ hai hoặc lỗi thay vì nhận `400 EMPTY_CART`.
 - Hai yêu cầu hủy cùng một đơn chạy đồng thời có thể cùng thấy trạng thái cũ và hoàn kho hai lần.
