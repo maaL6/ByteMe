@@ -8,7 +8,7 @@
 
 ## 1. Bài toán và phạm vi
 
-### 1.1. Bối cảnh bài toán
+### 1.1. Boói cảnh bài toán
 Dự án giải quyết bài toán đặt món và quản lý vận hành cho một nhà hàng:
 - Phục vụ đồng thời 2 hình thức đặt món:
   - **Ăn tại chỗ (`DINE_IN`)**: Khách gọi món tại bàn, bắt buộc có thông tin số bàn (`tableNumber`), thanh toán tiền mặt (`CASH`) hoặc chuyển khoản (`BANK_TRANSFER`).
@@ -39,7 +39,7 @@ Hệ thống phân chia theo 3 vai trò độc lập:
 - Hỗ trợ cập nhật số lượng món (`PUT /api/cart/items/{cartItemId}`) hoặc xóa món khỏi giỏ (`DELETE /api/cart/items/{cartItemId}`).
 
 ### 2.4. Quy trình Tạo đơn hàng đồng bộ (Order Checkout — UC13)
-Toàn bộ thao tác checkout (`POST /api/orders`) diễn ra trong một Database Transaction đồng bộ duy nhất theo các bước:
+Toàn bộ thao tác checout (`POST /api/orders`) diễn ra trong một Database Transaction đoòng bộ duy nhất theo các bước:
 1. Đọc giỏ hàng của khách; nếu chưa có giỏ hoặc giỏ rỗng, lập tức từ chối với lỗi `400 EMPTY_CART`.
 2. Duyệt qua từng món theo thứ tự: kiểm tra món còn mở bán (`ACTIVE`) và còn đủ tồn kho (`stock >= qty`), thực hiện trừ tồn kho ngay lập tức (`stock = stock - qty`).
 3. Tạo đơn hàng mới ở trạng thái `PENDING`.
@@ -68,40 +68,24 @@ Toàn bộ thao tác checkout (`POST /api/orders`) diễn ra trong một Databas
 
 ---
 
-## 3. Các vấn đề cần xử lý và yêu cầu kỹ thuật
+## 3. Các vấn đề cần xử lý 
 
-### 3.1. Một số vấn đề kỹ thuật cần xử lý
-- **Kiểm soát Tranh chấp Đồng thời (Concurrency):**
+- **Concurrency:**
   - *Hiện trạng Phase 1*: Theo yêu cầu triển khai baseline cơ bản, hệ thống chưa dùng khóa bi quan (`SELECT ... FOR UPDATE`) hay khóa lạc quan (`@Version`). Do đó, hai checkout đồng thời có thể gặp hiện tượng Lost Update (cùng đọc tồn kho $S$ và cùng trừ kho, bán vượt tồn kho) dù `stock_quantity` không bị âm nhờ kiểm tra `stock >= qty`.
-  - *Deadlock InnoDB*: Khi checkout, câu lệnh chèn vào `order_items` giữ Shared Lock (S-lock) trên bảng `foods` do ràng buộc Foreign Key, sau đó thao tác `UPDATE foods` trừ kho lại yêu cầu Exclusive Lock (X-lock). Khi nhiều luồng cùng checkout các món giống nhau, InnoDB sẽ phát hiện deadlock và rollback một nhánh. Hệ thống đã xử lý bắt ngoại lệ này và trả về HTTP `409 CONCURRENT_UPDATE` để client gửi lại request.
+  - *Deadlock InnoDB*: Khi checkout, câu lệnh chèn vào `order_items` giữ Shared Lock (S-lock) trên bảng `foods` do ràng buộc Foreign Key, sau đó thao tác `UPDATE foods` trừ kho lại yêu cầu Exclusive Lock. Khi nhiều luồng cùng checkout các món giống nhau, InnoDB sẽ phát hiện deadlock và rollback một nhánh. Hệ thống đã xử lý bắt ngoại lệ này và trả về HTTP `409 CONCURRENT_UPDATE` để client gửi lại request.
   - *Định hướng Phase 2*: Triển khai khóa bi quan hoặc khóa lạc quan cho quá trình trừ kho và hoàn kho để ngăn chặn triệt để bán vượt kho và hủy trùng lặp.
-- **Nút thắt hiệu năng (Từ báo cáo đo tải Kaggle k6):**
-  - Bài kiểm tra tải với k6 lên đến 500 Virtual Users (VUs) cho thấy hệ thống duy trì 0% lỗi HTTP, tuy nhiên thông lượng bão hòa ở mức 100–140 RPS và độ trễ tăng vọt (P95 đạt 8,56s so với ngưỡng yêu cầu 500ms; P99 đạt 10,02s) do nghẽn hàng đợi tại connection pool HikariCP và thread pool Tomcat.
 - **Cơ chế Chống gửi trùng (Idempotency Key):**
   - Endpoint tạo đơn `POST /api/orders` hiện chưa hỗ trợ idempotency key; nếu client gửi lại request khi mạng chập chờn, request thứ hai gặp giỏ đã dọn và trả lỗi `400 EMPTY_CART`.
 - **Giới hạn của Rate Limiter in-memory & Quản lý Token:**
   - Bộ đếm rate limit lưu trong bộ nhớ JVM sẽ bị reset khi ứng dụng khởi động lại và không chia sẻ được khi scale nhiều container backend (cần chuyển sang Redis khi mở rộng).
   - Token JWT hoàn toàn stateless; hệ thống hiện chưa có bảng thu hồi (blacklist/revocation) hay cơ chế refresh token/xoay vòng khóa.
 
-### 3.2. Yêu cầu kỹ thuật (Technical Requirements & NFRs)
-- **Nền tảng & Phiên bản**: Java 21 LTS, Spring Boot 3.5.16, MySQL 8.4 InnoDB.
-- **Chuẩn hóa API & Xác thực**:
-  - Kiến trúc RESTful, dữ liệu trao đổi định dạng JSON strict.
-  - Mã hóa bất đối xứng JWT RS256; token subject (`sub`) bắt buộc là ID số nguyên dương của người dùng trong CSDL.
-  - OpenAPI 3.0 viết tay tại `/openapi.yaml` là tài liệu nguồn chuẩn (single source of truth), Swagger UI đọc trực tiếp từ file này.
-- **Ràng buộc Dữ liệu & Toàn vẹn CSDL**:
-  - Toàn bộ thời gian lưu trữ theo chuẩn UTC (`DATETIME(6)`).
-  - Bảng `users` áp dụng ràng buộc `CHECK` kiểm tra định dạng email, regex hash BCrypt, kiểm tra độ dài và danh sách enum vai trò/trạng thái.
-  - Khóa ngoại thiết lập `ON DELETE RESTRICT` để chống xóa cascade làm mất dấu dữ liệu tài chính/đơn hàng.
-- **Giám sát & Đảm bảo Quy tắc Kiến trúc**:
-  - Tự động hóa kiểm tra tính tuân thủ của các tầng qua kiểm thử kiến trúc bằng ArchUnit.
-
 ---
 
 ## 4. Kiến trúc dự án và các tài liệu chi tiết
 
 ### 4.1. Sơ đồ kiến trúc tổng thể (Architecture Diagram)
-Hệ thống được thiết kế theo mô hình **Modular Monolith** kết hợp nguyên lý **Clean Architecture**, phân tách độc lập các bounded context (`auth`, `food`, `cart`, `order`):
+Hệ thống được thiết kế theo mô hình Modular Monolith, phân tách độc lập các module (`auth`, `food`, `cart`, `order`):
 
 ```mermaid
 flowchart TB
@@ -158,8 +142,7 @@ flowchart TB
     OrderRepo --> DB
 ```
 
-### 4.2. Nguyên lý phân tầng & Quy tắc thiết kế (Clean Architecture / ArchUnit)
-Mọi module nghiệp vụ đều tuân thủ nghiêm ngặt mô hình phân tầng hướng tâm:
+### 4.2. Nguyên lý phân tầng & Quy tắc thiết kế
 
 ```
 HTTP / JSON Request
@@ -181,9 +164,8 @@ HTTP / JSON Request
 ```
 
 **Thiết kế kiến trúc:**
-1. **Tầng Service độc lập:** Không phụ thuộc `org.springframework.web`, `jakarta.servlet` hay `jakarta.persistence`, `org.hibernate`, `java.sql`. Ngoại lệ nghiệp vụ ném qua `BusinessException` và được chuyển đổi tự động bởi `GlobalErrors`.
-2. **Đóng gói ORM:** Tầng Service không gọi các phương thức quản lý flush của JPA; các thao tác đồng bộ CSDL được đóng gói trong Repository (ví dụ `CartRepository.saveChanges()`).
-3. **Giao tiếp liên module chuẩn mực:** Các module `food`, `cart`, `order` chỉ tương tác với nhau thông qua Service và DTO công khai, tuyệt đối không truy cập trực tiếp Entity hoặc Repository của module khác:
+1. **Tầng Service độc lập** 
+2. **Giao tiếp giữa các modu;e:** Các module `food`, `cart`, `order` chỉ tương tác với nhau thông qua Service và DTO công khai, không truy cập trực tiếp Entity hoặc Repository của module khác:
    - Cart gọi `FoodService` để kiểm tra món còn bán và lấy thông tin hiển thị.
    - Order gọi `CartService` để lấy món checkout / dọn giỏ và gọi `FoodService` để trừ kho / hoàn kho.
 
@@ -193,14 +175,13 @@ Xem ở `docs/`, `kaggle/`, `src/main/resources/static/`
 
 | Tài liệu | Đường dẫn | Nội dung và phạm vi |
 | :--- | :--- | :--- |
-| **Kiến trúc hệ thống** | [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md) | Sơ đồ phân tầng Modular Monolith, ranh giới 4 module, Sequence diagram tạo đơn (UC13) và hủy đơn (UC15/UC17), quy tắc `@Transactional` và vòng đời trạng thái đơn hàng |
+| **Kiến trúc hệ thống** | [docs/architecture-single-restaurant.md](docs/architecture-single-restaurant.md) | Sơ đồ kiến trúc |
 | **Thiết kế CSDL** | [docs/database-design.md](docs/database-design.md) | Chi tiết DB |
-| **Đặc tả Use Cases** | [docs/Project KTPM.md](<docs/Project KTPM.md>) | Phân tích yêu cầu chi tiết 18 Use Cases (UC01–UC18), mô tả actors, điều kiện tiên quyết, luồng xử lý và quy tắc nghiệp vụ theo hình thức `DINE_IN` / `DELIVERY` |
-| **Báo cáo An toàn thông tin** | [docs/security-report.md](docs/security-report.md) | Báo cáo kiểm thử bảo mật backend bằng OWASP ZAP (Anonymous, Authenticated) và kiểm thử đối soát 72 tổ hợp vai trò × API chống lỗi BOLA (Broken Object Level Authorization) |
-| **Hợp đồng API (OpenAPI 3.0)** | [src/main/resources/static/openapi.yaml](src/main/resources/static/openapi.yaml) | Bản đặc tả OpenAPI 3.0 viết tay chuẩn hóa khớp 100% với Controller/DTO/Service, làm nguồn dữ liệu cho Swagger UI |
-| **Kết quả Kiểm thử tải** | [kaggle/results/phase1-baseline/README.md](kaggle/results/phase1-baseline/README.md) | Báo cáo đo tải k6 benchmark trên môi trường Kaggle CPU (4 vCPU, 30GB RAM), phân tích độ trễ P50/P90/P95/P99, thông lượng RPS và biểu đồ `load_test_report.png` |
+| **Đặc tả Use Cases** | [docs/Project KTPM.md](<docs/Project KTPM.md>) | Các usecase chi tiết |
+| **OpenAPI** | [src/main/resources/static/openapi.yaml](src/main/resources/static/openapi.yaml) | Đặc tả API |
+| **Stress Test** | [kaggle/results/phase1-baseline/README.md](kaggle/results/phase1-baseline/README.md) | Báo cáo stress test qua Kaggle |
 
-### 4.4. Cấu trúc tổ chức mã nguồn (Project Directory Tree)
+### 4.4. Cấu trúc repo
 ```text
 ByteMe/
 ├── compose.yaml                      # Cấu hình Docker Compose (MySQL 8.4 + Spring Boot backend)
@@ -273,25 +254,24 @@ ByteMe/
 ```
 
 ### 4.5. Công nghệ sử dụng
-- **Backend**: Java 21 LTS, Spring Boot 3.5.16, Spring Security 6, Spring Data JPA, Hibernate ORM, Lombok.
-- **Cơ sở dữ liệu**: MySQL 8.4 InnoDB, connection pool HikariCP.
-- **Bảo mật**: JWT bất đối xứng (RS256), băm mật khẩu BCrypt, Rate Limiting in-memory.
-- **Quản lý & Build**: Maven Wrapper (Maven 3.9.11).
-- **Đóng gói & Ảo hóa**: Docker, Docker Compose, Multi-stage image build.
-- **Kiểm thử & Đảm bảo chất lượng**: JUnit 5, MockMvc, Testcontainers, ArchUnit, OWASP ZAP, k6 load testing.
+- **Backend**: Java 21 LTS, Spring Boot 3.5.16, Spring Security 6, Spring Data JPA, Hibernate ORM, Lombok
+- **DB**: MySQL 8.4 InnoDB, connection pool HikariCP
+- **Security**: JWT bất đối xứng (RS256), băm mật khẩu BCrypt, Rate Limiting in-memory
+- **Build**: Maven Wrapper (Maven 3.9.11)
+- **DevOps**: Docker, Docker Compose, Multi-stage image build
+- **QA**: JUnit 5, MockMvc, Testcontainers, ArchUnit, OWASP ZAP, k6 load testing
 
 ---
 
 ## 5. Chạy nhanh và tài liệu API
 
 ### 5.1. Yêu cầu môi trường
-- **Java**: JDK 21 trở lên (nếu chạy trực tiếp trên máy host).
-- **Docker & Docker Compose**: Để khởi chạy container MySQL và Backend.
-- **Python 3**: Kèm thư viện `cryptography==50.0.2` để sinh cặp khóa RSA cho JWT.
+- **Java**: JDK 21 trở lên
+- **Docker & Docker Compose**: Để khởi chạy container MySQL và Backend
 
-### 5.2. Các bước khởi chạy nhanh
+### 5.2. Hướng dẫn chạy
 
-#### Bước 1: Chuẩn bị cặp khóa RSA cho JWT
+#### Bước 1: Tạo cặp RSA cho JWT
 Ứng dụng sử dụng cặp khóa RSA đặt trong `.local` (đã gitignore) để ký và giải mã JWT:
 ```sh
 python3 -m venv .venv
@@ -301,23 +281,22 @@ python3 -m venv .venv
 
 #### Bước 2: Khởi chạy hệ thống
 
-**Cách 1: Khởi chạy bằng Docker Compose (Khuyên dùng)**
-Chuẩn bị bản sao khóa phân quyền cho runtime Docker và build/run toàn bộ hệ thống:
+**Cách 1: Docker**
 ```sh
 .venv/bin/python scripts/prepare-docker-keys.py
 docker compose up --build -d
 ```
-Nạp dữ liệu mẫu ban đầu vào MySQL (chạy một lần):
+Nạp dữ liệu mẫu vào MySQL:
 ```sh
 docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < /opt/byteme/seed.sql'
 ```
 
-**Cách 2: Khởi chạy trực tiếp trên máy host (Local JVM)**
+**Cách 2: Local JVM**
 1. Chạy riêng container MySQL:
    ```sh
    docker compose up mysql -d
    ```
-2. Khởi chạy backend qua Maven Wrapper:
+2. Chạy qua Maven Wrapper:
    - **Linux / macOS**:
      ```sh
      DB_URL=jdbc:mysql://localhost:3306/starter DB_USERNAME=starter DB_PASSWORD=local-development-only ./mvnw spring-boot:run
@@ -327,11 +306,11 @@ docker compose exec mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYS
      $env:DB_URL="jdbc:mysql://localhost:3306/starter"; $env:DB_USERNAME="starter"; $env:DB_PASSWORD="local-development-only"; .\mvnw.cmd spring-boot:run
      ```
 
-#### Bước 3: Tài khoản mẫu thử nghiệm (Seed Accounts)
-Hệ thống tạo sẵn các tài khoản demo sau khi nạp `seed.sql` với mật khẩu chung là **`ByteMeDemo!2026`**:
-- **ADMIN**: `admin@byteme.example` (quản trị món ăn)
-- **EMPLOYEE**: `huong.employee@byteme.example` hoặc `nam.employee@byteme.example` (xử lý đơn hàng)
-- **CUSTOMER**: `an.customer@byteme.example`, `binh.customer@byteme.example` (đặt món)
+#### Bước 3: Tài khoản thử nghiệm
+Các tài khoản demo sau khi nạp `seed.sql`, pass chung là **`ByteMeDemo!2026`**:
+- **ADMIN**: `admin@byteme.example` 
+- **EMPLOYEE**: `huong.employee@byteme.example` hoặc `nam.employee@byteme.example` 
+- **CUSTOMER**: `an.customer@byteme.example`, `binh.customer@byteme.example` 
 
 Tạo nhanh token JWT fixture để kiểm tra phân quyền cục bộ:
 ```sh
@@ -341,8 +320,6 @@ bash scripts/issue-local-tokens.sh
 ### 5.3. Tài liệu API & Đặc tả Use Cases
 - **Swagger UI**: `http://localhost:8080/swagger-ui/index.html`
 - **Tài liệu OpenAPI**: `http://localhost:8080/openapi.yaml`
-
-Đặc tả được đối chiếu tĩnh với Controller, DTO, Service, Repository, xử lý lỗi và cấu hình bảo mật ngày 2026-10-26 (đạt chuẩn 18 operation UC01–UC18):
 
 | UC | Method | Endpoint | Quyền hạn | Mô tả tóm tắt |
 | :--- | :--- | :--- | :--- | :--- |
@@ -359,7 +336,7 @@ bash scripts/issue-local-tokens.sh
 | **UC11** | PUT | `/api/cart/items/{cartItemId}` | CUSTOMER | Cập nhật số lượng món trong giỏ |
 | **UC12** | DELETE | `/api/cart/items/{cartItemId}` | CUSTOMER | Xóa một dòng món khỏi giỏ hàng |
 | **UC13** | POST | `/api/orders` | CUSTOMER | Tạo đơn hàng mới từ giỏ hàng hiện tại |
-| **UC14** | GET | `/api/orders/{orderId}` | CUSTOMER / EMPLOYEE | Xem chi tiết đơn hàng (khách chỉ xem đơn của mình) |
+| **UC14** | GET | `/api/orders/{orderId}` | CUSTOMER / EMPLOYEE | Xem chi tiết đơn hàng (khách hàng xem đơn của mình) |
 | **UC15** | DELETE | `/api/orders/{orderId}` | CUSTOMER | Khách hủy đơn hàng của mình (chỉ khi PENDING) |
 | **UC16** | POST | `/api/orders/{orderId}/confirm` | EMPLOYEE | Tiếp nhận và xác nhận đơn hàng |
 | **UC17** | PUT | `/api/orders/{orderId}/status` | EMPLOYEE | Cập nhật trạng thái đơn (chế biến, giao hàng, hoàn thành, hủy) |
@@ -376,7 +353,7 @@ bash scripts/issue-local-tokens.sh
 
 ## 6. Kiểm thử
 
-Hệ thống được bảo vệ bởi chiến lược kiểm thử đa tầng:
+Hệ thống được kiểm thử chi tiết (trust me bro)
 
 ### 6.1. Unit & Integration Tests (Testcontainers)
 Kiểm thử toàn diện tầng nghiệp vụ, phân quyền MockMvc và CSDL MySQL thật thông qua Docker Testcontainers:
@@ -392,8 +369,8 @@ python -X utf8 scripts/test-endpoints.py
 ```
 Kịch bản tự động kiểm tra đăng ký, đăng nhập, duyệt menu, giỏ hàng, đặt đơn ăn tại chỗ, đặt đơn giao hàng, luồng cập nhật trạng thái của nhân viên và hủy đơn hoàn kho.
 
-### 6.3. Kiểm thử tải (Load Testing on Kaggle)
-- Kịch bản k6 đa tầng tải (50 VUs → 200 VUs → 500 VUs) được thực thi trên hạ tầng Kaggle CPU.
+### 6.3. Kiểm thử tải
+- Test bằng k6 (50 VUs → 200 VUs → 500 VUs) qua Kaggle.
 - Chi tiết cấu hình, biểu đồ độ trễ và báo cáo tóm tắt baseline: xem [kaggle/results/phase1-baseline/README.md](kaggle/results/phase1-baseline/README.md).
 
 ### 6.4. Đánh giá bảo mật 
