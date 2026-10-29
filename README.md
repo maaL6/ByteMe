@@ -369,15 +369,11 @@ python -X utf8 scripts/test-endpoints.py
 ```
 Kịch bản tự động kiểm tra đăng ký, đăng nhập, duyệt menu, giỏ hàng, đặt đơn ăn tại chỗ, đặt đơn giao hàng, luồng cập nhật trạng thái của nhân viên và hủy đơn hoàn kho.
 
-### 6.3. Kiểm thử tải
-- Test bằng k6 (50 VUs → 200 VUs → 500 VUs) qua Kaggle.
-- Chi tiết cấu hình, biểu đồ độ trễ và báo cáo tóm tắt baseline: xem [kaggle/results/phase1-baseline/README.md](kaggle/results/phase1-baseline/README.md).
-
-### 6.4. Đánh giá bảo mật 
+### 6.3. Đánh giá bảo mật 
 - Hệ thóng được đnáh giá bằng OWASP ZAP 
 - Kết quả không ghi nhận sai lệch phân quyền hay lộ lọt dữ liệu chéo người dùng: xem [docs/security-report.md](docs/security-report.md).
 
-### 6.5. Kết quả kiểm thử tải trên Kaggle (Phase 1 — baseline)
+### 6.4. Kết quả kiểm thử tải trên Kaggle
 
 Đợt kiểm thử ngày **26/10/2026** chạy bằng **k6 trên Kaggle CPU (4 vCPU, 30 GB RAM)**, với MySQL 8 và ứng dụng trên cùng máy. Tải tăng theo các giai đoạn: **30 giây lên 50 VUs → 1 phút lên 200 VUs → 1 phút lên 500 VUs → 30 giây về 0**.
 
