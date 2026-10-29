@@ -1,4 +1,4 @@
-# ByteMe — Restaurant Ordering Backend
+# ByteMe - Restaurant Ordering Backend
 
 - **Swagger UI**: http://localhost:8080/swagger-ui/index.html
 - **Đặc tả OpenAPI 3.0**: http://localhost:8080/openapi.yaml
@@ -24,21 +24,21 @@ Hệ thống phân chia theo 3 vai trò độc lập:
 
 ## 2. Nghiệp vụ chính
 
-### 2.1. Quản lý Tài khoản & Xác thực (Auth — UC01, UC02)
+### 2.1. Quản lý Tài khoản & Xác thực (Auth - UC01, UC02)
 - **Đăng ký tài khoản (`POST /api/auth/register`)**: Tiếp nhận `fullName`, `email`, `phone`, `password`, `confirmPassword`. Kiểm tra trùng lặp email/SĐT, mã hóa mật khẩu bằng BCrypt, tự động kích hoạt tài khoản vai trò `CUSTOMER`.
 - **Đăng nhập & Cấp token (`POST /api/auth/token`)**: Xác thực thông tin đăng nhập, cấp JWT token với TTL 5.400 giây (90 phút).
 - **Chống Brute-force**: Tích hợp cơ chế Rate Limiting in-memory tại tầng Filter: giới hạn tối đa 10 lần đăng nhập thất bại/email và 100 lần/IP trong cửa sổ 900 giây (15 phút).
 
-### 2.2. Quản lý Thực đơn (Food — UC03 đến UC08)
+### 2.2. Quản lý Thực đơn (Food - UC03 đến UC08)
 - **Tra cứu công khai**: Khách hàng và người dùng chưa đăng nhập có thể xem danh mục, duyệt danh sách món ăn đang bán (`GET /api/foods`), xem chi tiết món (`GET /api/foods/{id}`) và tìm kiếm theo từ khóa kèm bộ lọc danh mục (`GET /api/foods/search?q=&categoryId=`).
 - **Quản trị món ăn (Admin)**: Thêm món mới (`POST /api/foods`), sửa thông tin/giá bán/tồn kho (`PUT /api/foods/{id}`). Thao tác xóa món (`DELETE /api/foods/{id}`) áp dụng Soft Delete (chuyển trạng thái sang `INACTIVE` / ngừng bán). Giá tiền dùng kiểu số nguyên/thập phân chính xác `DECIMAL(15,2)`, không dùng số thực `float`/`double`.
 
-### 2.3. Quản lý Giỏ hàng (Cart — UC09 đến UC12)
+### 2.3. Quản lý Giỏ hàng (Cart - UC09 đến UC12)
 - Giỏ hàng định danh 1-1 theo `userId` của khách hàng (`CUSTOMER`).
 - Lazy Creation: `GET /api/cart` khi khách chưa từng thêm món sẽ trả về giỏ rỗng `{ id: null, items: [] }` mà không tạo bản ghi rác trong CSDL. Bản ghi giỏ hàng chỉ được tạo tại lần thêm món đầu tiên (`POST /api/cart/items`).
 - Hỗ trợ cập nhật số lượng món (`PUT /api/cart/items/{cartItemId}`) hoặc xóa món khỏi giỏ (`DELETE /api/cart/items/{cartItemId}`).
 
-### 2.4. Quy trình Tạo đơn hàng đồng bộ (Order Checkout — UC13)
+### 2.4. Quy trình Tạo đơn hàng đồng bộ (Order Checkout - UC13)
 Toàn bộ thao tác checout (`POST /api/orders`) diễn ra trong một Database Transaction đoòng bộ duy nhất theo các bước:
 1. Đọc giỏ hàng của khách; nếu chưa có giỏ hoặc giỏ rỗng, lập tức từ chối với lỗi `400 EMPTY_CART`.
 2. Duyệt qua từng món theo thứ tự: kiểm tra món còn mở bán (`ACTIVE`) và còn đủ tồn kho (`stock >= qty`), thực hiện trừ tồn kho ngay lập tức (`stock = stock - qty`).
@@ -96,7 +96,7 @@ flowchart TB
 
     Security["Spring Security filter chain: JWT RS256 + phân quyền vai trò + LoginIpFilter"]
 
-    subgraph App["Ứng dụng Spring Boot — Modular Monolith"]
+    subgraph App["Ứng dụng Spring Boot - Modular Monolith"]
         direction TB
         subgraph Auth["auth (UC01–UC02)"]
             AuthAPI["AuthController"]
@@ -386,8 +386,8 @@ Mỗi vòng lặp kiểm tra `GET /api/foods`, `GET /api/foods/search`, `GET /ap
 | Checks đạt | 100% (18.028/18.028) |
 | Throughput trung bình | Khoảng 99,48 request/giây |
 | Độ trễ trung bình | 2,2 giây |
-| P95 | 8,55 giây — không đạt ngưỡng < 500 ms |
-| P99 | 10,02 giây — không đạt ngưỡng < 1.200 ms |
+| P95 | 8,55 giây - không đạt ngưỡng < 500 ms |
+| P99 | 10,02 giây - không đạt ngưỡng < 1.200 ms |
 | Độ trễ lớn nhất | 11,85 giây |
 
 ![Biểu đồ độ trễ phản hồi API và throughput trong kiểm thử tải Kaggle Phase 1](kaggle/results/phase1-baseline/load_test_report.png)
