@@ -370,8 +370,12 @@ python -X utf8 scripts/test-endpoints.py
 Kịch bản tự động kiểm tra đăng ký, đăng nhập, duyệt menu, giỏ hàng, đặt đơn ăn tại chỗ, đặt đơn giao hàng, luồng cập nhật trạng thái của nhân viên và hủy đơn hoàn kho.
 
 ### 6.3. Đánh giá bảo mật 
-- Hệ thóng được đnáh giá bằng OWASP ZAP 
-- Kết quả không ghi nhận sai lệch phân quyền hay lộ lọt dữ liệu chéo người dùng: xem [docs/security-report.md](docs/security-report.md).
+Sử dụng tool DAST (`ZAP`) để kiểm thử trong phạm vi:
+- **BE-anonymous:** Ghi nhận 2 nhóm cảnh báo mức trung bình, đều liên quan đến Swagger: thư viện JavaScript bị cảnh báo và thiếu chính sách bảo mật CSP. Các cảnh báo mức thấp liên quan đến chuỗi số trong Swagger, dữ liệu đầu vào được phản chiếu trong phản hồi API đăng ký và phản hồi tại `/error`. Chưa xác nhận khai thác thành công hoặc rò rỉ thông tin nhạy cảm.
+- **BE-authenticated:** Ghi nhận 1 nhóm cảnh báo mức thấp do dữ liệu đầu vào được phản chiếu trong phản hồi JSON khi quản lý món và tạo đơn hàng. Chưa xác nhận có thể thực thi mã độc trên giao diện (XSS).
+- **BOLA:** Đã kiểm tra 72 tổ hợp (18 `UC` x 4 `role`), bao gồm thử truy cập hoặc thay đổi dữ liệu của người khác. Không ghi nhận trường hợp truy cập trái phép hoặc sai lệch so với chính sách phân quyền được mô tả trong tài liệu đặc tả.
+
+Chi tiết báo cáo xem tại [docs/security-report.md](docs/security-report.md).
 
 ### 6.4. Kết quả kiểm thử tải trên Kaggle
 
