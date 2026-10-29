@@ -74,7 +74,7 @@ Toàn bộ thao tác checout (`POST /api/orders`) diễn ra trong một Database
   - *Hiện trạng Phase 1*: Theo yêu cầu triển khai baseline cơ bản, hệ thống chưa dùng khóa bi quan (`SELECT ... FOR UPDATE`) hay khóa lạc quan (`@Version`). Do đó, hai checkout đồng thời có thể gặp hiện tượng Lost Update (cùng đọc tồn kho $S$ và cùng trừ kho, bán vượt tồn kho) dù `stock_quantity` không bị âm nhờ kiểm tra `stock >= qty`.
   - *Deadlock InnoDB*: Khi checkout, câu lệnh chèn vào `order_items` giữ Shared Lock (S-lock) trên bảng `foods` do ràng buộc Foreign Key, sau đó thao tác `UPDATE foods` trừ kho lại yêu cầu Exclusive Lock. Khi nhiều luồng cùng checkout các món giống nhau, InnoDB sẽ phát hiện deadlock và rollback một nhánh. Hệ thống đã xử lý bắt ngoại lệ này và trả về HTTP `409 CONCURRENT_UPDATE` để client gửi lại request.
   - *Định hướng Phase 2*: Triển khai khóa bi quan hoặc khóa lạc quan cho quá trình trừ kho và hoàn kho để ngăn chặn triệt để bán vượt kho và hủy trùng lặp.
-- **Cơ chế Chống gửi trùng (Idempotency Key):**
+- **Idempotency Key:**
   - Endpoint tạo đơn `POST /api/orders` hiện chưa hỗ trợ idempotency key; nếu client gửi lại request khi mạng chập chờn, request thứ hai gặp giỏ đã dọn và trả lỗi `400 EMPTY_CART`.
 - **Giới hạn của Rate Limiter in-memory & Quản lý Token:**
   - Bộ đếm rate limit lưu trong bộ nhớ JVM sẽ bị reset khi ứng dụng khởi động lại và không chia sẻ được khi scale nhiều container backend (cần chuyển sang Redis khi mở rộng).
@@ -84,7 +84,7 @@ Toàn bộ thao tác checout (`POST /api/orders`) diễn ra trong một Database
 
 ## 4. Kiến trúc dự án và các tài liệu chi tiết
 
-### 4.1. Sơ đồ kiến trúc tổng thể (Architecture Diagram)
+### 4.1. Architecture Diagram
 Hệ thống được thiết kế theo mô hình Modular Monolith, phân tách độc lập các module (`auth`, `food`, `cart`, `order`):
 
 ```mermaid
